@@ -194,6 +194,35 @@
     let planGenerationProgress = $state(0);
     let planGenerationStatus = $state("");
 
+    const PLAN_COLORS = [
+        "#3b82f6", // Blue
+        "#10b981", // Emerald
+        "#f59e0b", // Amber
+        "#ef4444", // Red
+        "#8b5cf6", // Violet
+    ];
+
+    function getNextPlanColor() {
+        return PLAN_COLORS[contentPlans.length % PLAN_COLORS.length];
+    }
+
+    function updatePlanPrompt() {
+        if (!$currentProject?.social_networks) return;
+        const selectedNets = $currentProject.social_networks.filter((n: any) =>
+            newPlan.platforms.includes(n.id),
+        );
+        if (selectedNets.length === 0) {
+            newPlan.prompt = "";
+            return;
+        }
+        newPlan.prompt = selectedNets
+            .map(
+                (n: any) =>
+                    `[${n.name} Settings]:\n${n.default_prompt || "Default generation rules apply."}`,
+            )
+            .join("\n\n");
+    }
+
     let newPlan = $state({
         name: "",
         prompt: "",
@@ -208,7 +237,10 @@
         const sorted = [...selectedDates].sort();
         newPlan.start_date = sorted[0];
         newPlan.end_date = sorted[sorted.length - 1];
-        newPlan.name = `Content Plan ${sorted[0]}`;
+        newPlan.name = ""; // User wants "Plan Title" which they'll fill
+        newPlan.color = getNextPlanColor();
+        newPlan.platforms = []; // Reset platforms selection for new plan
+        newPlan.prompt = "";
         showPlanModal = true;
     }
 
@@ -938,19 +970,31 @@
         class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
     >
         <div
-            class="bg-card border border-border w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            class="bg-card border-2 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            style="border-color: {newPlan.color}40"
         >
             <!-- Modal Header -->
             <div
-                class="p-6 border-b border-border flex items-center justify-between bg-muted/20"
+                class="p-6 border-b border-border flex items-center justify-between"
+                style="background-color: {newPlan.color}10"
             >
                 <div class="flex items-center gap-3">
-                    <div class="p-2 bg-primary/20 rounded-xl text-primary">
+                    <div
+                        class="p-2 rounded-xl text-white shadow-lg"
+                        style="background-color: {newPlan.color}"
+                    >
                         <Plus size={24} />
                     </div>
-                    <h2 class="text-2xl font-black tracking-tight">
-                        Quick Create Content Plan
-                    </h2>
+                    <div>
+                        <h2 class="text-2xl font-black tracking-tight">
+                            Quick Create Content Plan
+                        </h2>
+                        <p
+                            class="text-[10px] uppercase font-black tracking-widest opacity-60"
+                        >
+                            Theme Color Assigned Automatically
+                        </p>
+                    </div>
                 </div>
                 <button
                     onclick={() => (showPlanModal = false)}
@@ -962,57 +1006,34 @@
 
             <!-- Modal Body -->
             <div class="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-4">
                     <div class="space-y-2">
                         <label
                             class="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-auto"
-                            >Plan Name</label
+                            >Plan Title</label
                         >
                         <input
                             bind:value={newPlan.name}
-                            class="w-full bg-muted/30 border border-input rounded-xl p-3 font-bold"
+                            placeholder="Enter a descriptive title for this plan..."
+                            class="w-full bg-muted/30 border border-input rounded-xl p-4 font-black text-lg focus:ring-4 transition-all outline-none"
+                            style="--tw-ring-color: {newPlan.color}20"
                         />
-                    </div>
-                    <div class="space-y-2">
-                        <label
-                            class="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
-                            >Plan Color</label
-                        >
-                        <div class="flex items-center gap-3">
-                            <input
-                                type="color"
-                                bind:value={newPlan.color}
-                                class="w-12 h-10 rounded-lg cursor-pointer bg-transparent border-none p-0"
-                            />
-                            <span class="text-xs font-mono font-bold uppercase"
-                                >{newPlan.color}</span
-                            >
-                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label
-                            class="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
-                            >Start Date</label
-                        >
-                        <input
-                            type="date"
-                            bind:value={newPlan.start_date}
-                            class="w-full bg-muted/30 border border-input rounded-xl p-3 font-bold"
-                        />
-                    </div>
-                    <div class="space-y-2">
-                        <label
-                            class="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
-                            >End Date</label
-                        >
-                        <input
-                            type="date"
-                            bind:value={newPlan.end_date}
-                            class="w-full bg-muted/30 border border-input rounded-xl p-3 font-bold"
-                        />
+                <div class="space-y-4">
+                    <label
+                        class="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+                        >Selected Dates</label
+                    >
+                    <div class="flex flex-wrap gap-2">
+                        {#each [...selectedDates].sort() as dStr}
+                            <div
+                                class="px-3 py-1.5 rounded-lg border border-border bg-muted/20 text-xs font-bold font-mono"
+                            >
+                                {dStr}
+                            </div>
+                        {/each}
                     </div>
                 </div>
 
@@ -1044,12 +1065,18 @@
                                                 network.id,
                                             ];
                                         }
+                                        updatePlanPrompt();
                                     }}
                                     class="p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 {newPlan.platforms.includes(
                                         network.id,
                                     )
-                                        ? 'border-primary bg-primary/5'
+                                        ? 'bg-primary/5'
                                         : 'border-border hover:border-primary/40'}"
+                                    style="border-color: {newPlan.platforms.includes(
+                                        network.id,
+                                    )
+                                        ? newPlan.color
+                                        : ''}"
                                 >
                                     <div
                                         class="w-10 h-10 rounded-xl {getNetworkColor(
@@ -1086,12 +1113,13 @@
                         class="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"
                     >
                         <Layers size={16} />
-                        Generation Prompt
+                        Prompt Plan
                     </label>
                     <textarea
                         bind:value={newPlan.prompt}
-                        placeholder="What should these posts be about?"
-                        class="w-full min-h-[120px] bg-muted/30 border border-input rounded-2xl p-4 font-medium focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none shadow-inner"
+                        placeholder="Detailed instructions for the AI..."
+                        class="w-full min-h-[160px] bg-muted/30 border border-input rounded-2xl p-4 font-medium focus:ring-4 transition-all outline-none resize-none shadow-inner"
+                        style="--tw-ring-color: {newPlan.color}20"
                     ></textarea>
                 </div>
             </div>
@@ -1108,13 +1136,15 @@
                 </button>
                 <button
                     onclick={() => handleCreatePlan(false)}
-                    class="px-6 py-3 border-2 border-primary text-primary rounded-2xl font-bold hover:bg-primary/5 transition-all"
+                    class="px-6 py-3 border-2 text-primary rounded-2xl font-bold hover:bg-primary/5 transition-all"
+                    style="border-color: {newPlan.color}; color: {newPlan.color}"
                 >
                     Save Plan
                 </button>
                 <button
                     onclick={() => handleCreatePlan(true)}
-                    class="px-8 py-3 bg-primary text-primary-foreground rounded-2xl font-black shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+                    class="px-8 py-3 text-primary-foreground rounded-2xl font-black shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all"
+                    style="background-color: {newPlan.color}; shadow-color: {newPlan.color}40"
                 >
                     Start Generate
                 </button>

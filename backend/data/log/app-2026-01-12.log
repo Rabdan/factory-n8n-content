@@ -47,3 +47,7 @@
 [2026-01-12T07:18:49.008Z] [INFO] GET /api/posts?projectId=2
 [2026-01-12T07:18:49.028Z] [INFO] GET /api/projects/2/content-plans
 [2026-01-12T07:18:49.062Z] [INFO] GET /api/posts?projectId=2
+[2026-01-12T11:25:46.360Z] [INFO] GET /api/projects
+[2026-01-12T11:25:46.830Z] [INFO] GET /api/projects/2
+[2026-01-12T11:25:47.061Z] [INFO] GET /api/posts?projectId=2
+[2026-01-12T11:25:47.066Z] [INFO] GET /api/projects/2/content-plans
