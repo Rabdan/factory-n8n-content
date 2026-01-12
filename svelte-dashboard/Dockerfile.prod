@@ -13,13 +13,12 @@ WORKDIR /app
 # Copy built assets and necessary files from the builder stage
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/package.json .
-COPY --from=builder /app/vite.config.ts .
-COPY --from=builder /app/svelte.config.js .
 
 # Install production dependencies
 RUN npm install --omit=dev
 
 EXPOSE 5175
+ENV PORT=5175
 
-# Start the preview server
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0"]
+# Start the application using node
+CMD ["node", "build"]

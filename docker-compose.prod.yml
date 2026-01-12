@@ -5,10 +5,10 @@ services:
     build: ./backend
     container_name: content-factory-backend-prod
     ports:
-      - "3000:3000"
+      - "3060:3060"
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/contentfactory
-      - PORT=3000
+      - PORT=3060
     volumes:
       - ./data/uploads:/data/uploads
     depends_on:
@@ -24,7 +24,7 @@ services:
     ports:
       - "5175:5175"
     environment:
-      - VITE_API_URL=http://backend:3000
+      - VITE_API_URL=http://backend:3060
     depends_on:
       - backend
     networks:
