@@ -1,0 +1,49 @@
+[2026-01-12T03:20:48.657Z] [INFO] POST /api/auth/login
+[2026-01-12T03:20:48.780Z] [WARN] Failed login attempt for email: admin (Wrong password)
+[2026-01-12T03:21:26.704Z] [INFO] POST /api/auth/login
+[2026-01-12T03:21:26.752Z] [WARN] Failed login attempt for email: admin (Wrong password)
+[2026-01-12T03:40:37.860Z] [INFO] POST /api/auth/login
+[2026-01-12T03:40:37.966Z] [ERROR] Login error for admin: getaddrinfo ENOTFOUND db
+[2026-01-12T03:46:29.291Z] [INFO] POST /api/auth/login
+[2026-01-12T03:46:29.361Z] [ERROR] Login error for admin: getaddrinfo ENOTFOUND db
+[2026-01-12T04:31:09.458Z] [INFO] POST /api/auth/login
+[2026-01-12T04:31:09.570Z] [ERROR] Login error for admin: database "contentfactory" does not exist
+[2026-01-12T04:39:32.590Z] [INFO] POST /api/auth/login
+[2026-01-12T04:39:32.779Z] [WARN] Failed login attempt for email: admin (Wrong password)
+[2026-01-12T04:42:15.097Z] [INFO] POST /api/auth/login
+[2026-01-12T04:42:15.367Z] [WARN] Failed login attempt for email: admin (Wrong password)
+[2026-01-12T04:47:37.740Z] [INFO] POST /api/auth/login
+[2026-01-12T04:47:37.950Z] [INFO] User logged in: admin
+[2026-01-12T04:49:29.327Z] [INFO] POST /api/auth/login
+[2026-01-12T04:49:29.508Z] [INFO] User logged in: admin
+[2026-01-12T05:46:22.927Z] [INFO] POST /api/auth/login
+[2026-01-12T05:46:23.074Z] [INFO] User logged in: admin
+[2026-01-12T05:46:42.096Z] [INFO] GET /api/projects
+[2026-01-12T05:46:42.160Z] [INFO] GET /api/projects/1
+[2026-01-12T05:47:05.847Z] [INFO] POST /api/auth/login
+[2026-01-12T05:47:05.990Z] [INFO] User logged in: admin
+[2026-01-12T05:47:23.473Z] [INFO] GET /api/projects
+[2026-01-12T05:47:23.510Z] [INFO] GET /api/projects/1
+[2026-01-12T05:48:23.813Z] [INFO] GET /api/projects
+[2026-01-12T05:48:23.898Z] [INFO] GET /api/projects/1
+[2026-01-12T05:48:51.405Z] [INFO] GET /api/projects
+[2026-01-12T05:48:51.448Z] [INFO] GET /api/projects/1
+[2026-01-12T05:49:14.213Z] [INFO] GET /api/projects
+[2026-01-12T05:49:14.255Z] [INFO] GET /api/projects/1
+[2026-01-12T06:00:33.537Z] [INFO] POST /api/auth/login
+[2026-01-12T06:00:33.668Z] [INFO] User logged in: admin
+[2026-01-12T06:00:33.684Z] [INFO] GET /api/projects
+[2026-01-12T06:00:33.761Z] [INFO] GET /api/projects/1
+[2026-01-12T06:00:36.295Z] [INFO] GET /api/projects/2
+[2026-01-12T06:00:37.498Z] [INFO] GET /api/projects/1
+[2026-01-12T06:00:39.055Z] [INFO] GET /api/posts?projectId=1
+[2026-01-12T06:00:39.078Z] [INFO] GET /api/posts?projectId=1
+[2026-01-12T07:05:50.319Z] [INFO] GET /api/projects
+[2026-01-12T07:05:50.405Z] [INFO] GET /api/projects/1
+[2026-01-12T07:05:50.443Z] [INFO] GET /api/posts?projectId=1
+[2026-01-12T07:05:50.446Z] [INFO] GET /api/projects/1/content-plans
+[2026-01-12T07:18:45.928Z] [INFO] GET /api/projects/2
+[2026-01-12T07:18:48.998Z] [INFO] GET /api/projects/2/content-plans
+[2026-01-12T07:18:49.008Z] [INFO] GET /api/posts?projectId=2
+[2026-01-12T07:18:49.028Z] [INFO] GET /api/projects/2/content-plans
+[2026-01-12T07:18:49.062Z] [INFO] GET /api/posts?projectId=2
