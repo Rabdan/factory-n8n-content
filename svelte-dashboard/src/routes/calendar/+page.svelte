@@ -508,21 +508,21 @@
             {/if}
         </div>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
             <button
                 onclick={generateAllPending}
-                class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold transition-all shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0"
+                class="flex items-center gap-2 bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-bold transition-all shadow hover:bg-primary/90 active:scale-95"
             >
-                <Sparkles size={18} />
+                <Sparkles size={16} />
                 All Generate
             </button>
 
             {#if selectedDates.length > 0}
                 <button
                     onclick={openCreatePlanModal}
-                    class="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg hover:shadow-green-500/20 hover:-translate-y-0.5 animate-in slide-in-from-right-4"
+                    class="flex items-center gap-2 bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold transition-all shadow hover:bg-green-700 active:scale-95 animate-in slide-in-from-right-4"
                 >
-                    <Plus size={18} />
+                    <Plus size={16} />
                     Create Plan ({selectedDates.length})
                 </button>
             {/if}
@@ -550,24 +550,24 @@
             </div>
 
             <!-- Navigation -->
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 ml-2">
                 <button
-                    class="p-2 hover:bg-muted rounded-lg transition-colors border border-border"
+                    class="p-1.5 hover:bg-muted rounded-md transition-colors border border-border"
                     onclick={() => navigate(-1)}
                 >
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={18} />
                 </button>
-                <span class="font-bold min-w-[160px] text-center text-lg">
+                <span class="font-bold min-w-[140px] text-center text-base">
                     {currentDate.toLocaleDateString("en-US", {
                         month: "long",
                         year: "numeric",
                     })}
                 </span>
                 <button
-                    class="p-2 hover:bg-muted rounded-lg transition-colors border border-border"
+                    class="p-1.5 hover:bg-muted rounded-md transition-colors border border-border"
                     onclick={() => navigate(1)}
                 >
-                    <ChevronRight size={20} />
+                    <ChevronRight size={18} />
                 </button>
             </div>
         </div>
@@ -967,184 +967,183 @@
 {#if showPlanModal}
     <!-- Modal Overlay -->
     <div
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+        class="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] flex items-center justify-center p-4"
     >
         <div
-            class="bg-card border-2 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-            style="border-color: {newPlan.color}40"
+            class="bg-card border w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border-t-4"
+            style="border-top-color: {newPlan.color}"
         >
             <!-- Modal Header -->
             <div
-                class="p-6 border-b border-border flex items-center justify-between"
-                style="background-color: {newPlan.color}10"
+                class="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/50"
             >
                 <div class="flex items-center gap-3">
                     <div
-                        class="p-2 rounded-xl text-white shadow-lg"
+                        class="p-1.5 rounded text-white shadow"
                         style="background-color: {newPlan.color}"
                     >
-                        <Plus size={24} />
+                        <Plus size={20} />
                     </div>
                     <div>
-                        <h2 class="text-2xl font-black tracking-tight">
-                            Quick Create Content Plan
+                        <h2 class="text-xl font-bold tracking-tight">
+                            Create Content Plan
                         </h2>
-                        <p
-                            class="text-[10px] uppercase font-black tracking-widest opacity-60"
-                        >
-                            Theme Color Assigned Automatically
-                        </p>
                     </div>
                 </div>
                 <button
                     onclick={() => (showPlanModal = false)}
-                    class="p-2 hover:bg-muted rounded-xl transition-colors"
+                    class="p-1.5 hover:bg-muted rounded transition-colors"
                 >
-                    <X size={20} />
+                    <X size={18} />
                 </button>
             </div>
 
             <!-- Modal Body -->
-            <div class="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
-                <div class="space-y-4">
-                    <div class="space-y-2">
-                        <label
-                            class="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-auto"
-                            >Plan Title</label
-                        >
-                        <input
-                            bind:value={newPlan.name}
-                            placeholder="Enter a descriptive title for this plan..."
-                            class="w-full bg-muted/30 border border-input rounded-xl p-4 font-black text-lg focus:ring-4 transition-all outline-none"
-                            style="--tw-ring-color: {newPlan.color}20"
-                        />
-                    </div>
-                </div>
-
-                <div class="space-y-4">
-                    <label
-                        class="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
-                        >Selected Dates</label
-                    >
-                    <div class="flex flex-wrap gap-2">
-                        {#each [...selectedDates].sort() as dStr}
-                            <div
-                                class="px-3 py-1.5 rounded-lg border border-border bg-muted/20 text-xs font-bold font-mono"
+            <div class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <!-- Left Column: Settings -->
+                    <div class="md:col-span-4 space-y-6">
+                        <div class="space-y-2">
+                            <label
+                                class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-auto"
+                                >Plan Title</label
                             >
-                                {dStr}
-                            </div>
-                        {/each}
-                    </div>
-                </div>
+                            <input
+                                bind:value={newPlan.name}
+                                placeholder="Plan title..."
+                                class="w-full bg-background border border-input rounded-md px-3 py-2 text-sm font-bold focus:ring-2 transition-all outline-none"
+                                style="--tw-ring-color: {newPlan.color}40"
+                            />
+                        </div>
 
-                <!-- Social Networks Selection -->
-                <div class="space-y-4">
-                    <label
-                        class="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"
-                    >
-                        <Share2 size={16} />
-                        Target Platforms
-                    </label>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {#if $currentProject?.social_networks}
-                            {#each $currentProject.social_networks as network}
-                                <button
-                                    onclick={() => {
-                                        if (
-                                            newPlan.platforms.includes(
+                        <div class="space-y-2">
+                            <label
+                                class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+                                >Selected Dates</label
+                            >
+                            <div class="flex flex-wrap gap-1">
+                                {#each [...selectedDates].sort() as dStr}
+                                    <div
+                                        class="px-2 py-1 rounded bg-muted/50 border border-border text-[10px] font-bold font-mono"
+                                    >
+                                        {dStr}
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+
+                        <!-- Social Networks Selection -->
+                        <div class="space-y-3">
+                            <label
+                                class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"
+                            >
+                                <Share2 size={12} />
+                                Platforms
+                            </label>
+                            <div class="grid grid-cols-2 gap-2">
+                                {#if $currentProject?.social_networks}
+                                    {#each $currentProject.social_networks as network}
+                                        <button
+                                            onclick={() => {
+                                                if (
+                                                    newPlan.platforms.includes(
+                                                        network.id,
+                                                    )
+                                                ) {
+                                                    newPlan.platforms =
+                                                        newPlan.platforms.filter(
+                                                            (id) =>
+                                                                id !==
+                                                                network.id,
+                                                        );
+                                                } else {
+                                                    newPlan.platforms = [
+                                                        ...newPlan.platforms,
+                                                        network.id,
+                                                    ];
+                                                }
+                                                updatePlanPrompt();
+                                            }}
+                                            class="p-2 rounded-lg border-2 transition-all flex items-center gap-2 {newPlan.platforms.includes(
                                                 network.id,
                                             )
-                                        ) {
-                                            newPlan.platforms =
-                                                newPlan.platforms.filter(
-                                                    (id) => id !== network.id,
-                                                );
-                                        } else {
-                                            newPlan.platforms = [
-                                                ...newPlan.platforms,
+                                                ? 'bg-primary/5'
+                                                : 'border-border hover:border-primary/40'}"
+                                            style="border-color: {newPlan.platforms.includes(
                                                 network.id,
-                                            ];
-                                        }
-                                        updatePlanPrompt();
-                                    }}
-                                    class="p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 {newPlan.platforms.includes(
-                                        network.id,
-                                    )
-                                        ? 'bg-primary/5'
-                                        : 'border-border hover:border-primary/40'}"
-                                    style="border-color: {newPlan.platforms.includes(
-                                        network.id,
-                                    )
-                                        ? newPlan.color
-                                        : ''}"
-                                >
-                                    <div
-                                        class="w-10 h-10 rounded-xl {getNetworkColor(
-                                            network.id,
-                                        )} flex items-center justify-center text-white shadow-md"
-                                    >
-                                        {#if network.logo_url}
-                                            <img
-                                                src={network.logo_url.startsWith(
-                                                    "http",
-                                                )
-                                                    ? network.logo_url
-                                                    : `${API_BASE}/uploads/${network.logo_url}`}
-                                                alt=""
-                                                class="w-full h-full object-cover"
-                                            />
-                                        {:else}
-                                            <Share2 size={20} />
-                                        {/if}
-                                    </div>
-                                    <span
-                                        class="text-xs font-bold truncate w-full text-center"
-                                        >{network.name}</span
-                                    >
-                                </button>
-                            {/each}
-                        {/if}
+                                            )
+                                                ? newPlan.color
+                                                : ''}"
+                                        >
+                                            <div
+                                                class="w-6 h-6 rounded {getNetworkColor(
+                                                    network.id,
+                                                )} flex items-center justify-center text-white text-[10px]"
+                                            >
+                                                {#if network.logo_url}
+                                                    <img
+                                                        src={network.logo_url.startsWith(
+                                                            "http",
+                                                        )
+                                                            ? network.logo_url
+                                                            : `${API_BASE}/uploads/${network.logo_url}`}
+                                                        alt=""
+                                                        class="w-full h-full object-cover"
+                                                    />
+                                                {:else}
+                                                    <Share2 size={12} />
+                                                {/if}
+                                            </div>
+                                            <span
+                                                class="text-[10px] font-bold truncate"
+                                                >{network.name}</span
+                                            >
+                                        </button>
+                                    {/each}
+                                {/if}
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Prompt -->
-                <div class="space-y-4">
-                    <label
-                        class="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"
-                    >
-                        <Layers size={16} />
-                        Prompt Plan
-                    </label>
-                    <textarea
-                        bind:value={newPlan.prompt}
-                        placeholder="Detailed instructions for the AI..."
-                        class="w-full min-h-[160px] bg-muted/30 border border-input rounded-2xl p-4 font-medium focus:ring-4 transition-all outline-none resize-none shadow-inner"
-                        style="--tw-ring-color: {newPlan.color}20"
-                    ></textarea>
+                    <!-- Right Column: Massive Prompt Space -->
+                    <div class="md:col-span-8 flex flex-col space-y-2">
+                        <label
+                            class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"
+                        >
+                            <Layers size={14} />
+                            Prompt Plan
+                        </label>
+                        <textarea
+                            bind:value={newPlan.prompt}
+                            placeholder="Provide detailed instructions for AI generation for each platform..."
+                            class="flex-1 w-full min-h-[400px] bg-background border border-input rounded-md p-4 text-sm font-medium focus:ring-2 transition-all outline-none resize-none shadow-inner leading-relaxed"
+                            style="--tw-ring-color: {newPlan.color}40"
+                        ></textarea>
+                    </div>
                 </div>
             </div>
 
             <!-- Modal Footer -->
             <div
-                class="p-6 bg-muted/10 border-t border-border flex justify-end gap-3"
+                class="px-6 py-4 bg-muted/30 border-t border-border flex justify-end gap-2"
             >
                 <button
                     onclick={() => (showPlanModal = false)}
-                    class="px-6 py-3 rounded-2xl font-bold hover:bg-muted transition-colors"
+                    class="px-4 py-2 rounded-md font-bold text-sm hover:bg-muted transition-colors"
                 >
                     Cancel
                 </button>
                 <button
                     onclick={() => handleCreatePlan(false)}
-                    class="px-6 py-3 border-2 text-primary rounded-2xl font-bold hover:bg-primary/5 transition-all"
-                    style="border-color: {newPlan.color}; color: {newPlan.color}"
+                    class="px-4 py-2 border rounded-md font-bold text-sm transition-all"
+                    style="border-color: {newPlan.color}; color: {newPlan.color}; background-color: transparent"
                 >
                     Save Plan
                 </button>
                 <button
                     onclick={() => handleCreatePlan(true)}
-                    class="px-8 py-3 text-primary-foreground rounded-2xl font-black shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all"
-                    style="background-color: {newPlan.color}; shadow-color: {newPlan.color}40"
+                    class="px-5 py-2 text-white rounded-md font-bold text-sm shadow transition-all hover:brightness-110 active:scale-95"
+                    style="background-color: {newPlan.color}"
                 >
                     Start Generate
                 </button>

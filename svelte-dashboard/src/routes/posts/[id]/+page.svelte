@@ -153,93 +153,97 @@
 
 {#if post}
     <div
-        class="max-w-[1400px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+        class="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
     >
         <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3">
                 <button
                     onclick={() => history.back()}
-                    class="p-2 hover:bg-muted rounded-xl transition-colors border border-border"
+                    class="p-1.5 hover:bg-muted rounded-md transition-colors border border-border"
                 >
-                    <ArrowLeft size={20} />
+                    <ArrowLeft size={16} />
                 </button>
                 <div>
-                    <div class="flex items-center gap-3">
-                        <h1 class="text-3xl font-black tracking-tight">
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-xl font-bold tracking-tight">
                             Edit Post
                         </h1>
                         <span
-                            class="px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider {getStatusBadgeClass(
+                            class="px-2 py-0.5 rounded text-[10px] font-black border uppercase tracking-wider {getStatusBadgeClass(
                                 post.status,
                             )}"
                         >
                             {post.status}
                         </span>
                     </div>
-                    <p class="text-muted-foreground text-sm font-medium">
-                        Post ID: #{post.id} • {post.social_network_name ||
-                            "No platform"}
+                    <p
+                        class="text-muted-foreground text-[10px] font-semibold uppercase tracking-tight opacity-70"
+                    >
+                        {post.social_network_name || "Platform Unassigned"} • ID
+                        #{post.id}
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
                 {#if post.status !== "published"}
                     <button
                         onclick={handleSave}
                         disabled={isSaving}
-                        class="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                        class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-1.5 rounded-lg font-bold text-sm shadow-sm hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
                     >
                         {#if isSaving}
-                            <RefreshCw size={18} class="animate-spin" />
+                            <RefreshCw size={14} class="animate-spin" />
                             Saving...
                         {:else}
-                            <Save size={18} />
-                            Save Changes
+                            <Save size={14} />
+                            Save
                         {/if}
                     </button>
                 {:else}
                     <div
-                        class="flex items-center gap-2 text-green-500 font-bold px-4 py-2 bg-green-500/10 rounded-xl border border-green-500/30"
+                        class="flex items-center gap-2 text-green-600 font-bold text-sm px-3 py-1 bg-green-500/5 rounded-lg border border-green-500/20"
                     >
-                        <CheckCircle2 size={18} />
+                        <CheckCircle2 size={14} />
                         Published
                     </div>
                 {/if}
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Main Content -->
-            <div class="lg:col-span-2 space-y-8">
-                <!-- Media Section -->
+            <div class="lg:col-span-8 space-y-6">
+                <!-- Visual Content Section -->
                 <div
-                    class="bg-card border border-border rounded-2xl overflow-hidden shadow-sm"
+                    class="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
                 >
                     <div
-                        class="p-6 border-b border-border flex items-center justify-between bg-muted/5"
+                        class="px-5 py-3 border-b border-border flex items-center justify-between bg-muted/20"
                     >
-                        <h2 class="text-xl font-bold flex items-center gap-2">
-                            <ImageIcon size={22} class="text-primary" />
+                        <h2
+                            class="text-xs font-bold uppercase tracking-widest flex items-center gap-2"
+                        >
+                            <ImageIcon size={14} class="text-primary" />
                             Visual Content
                         </h2>
                         {#if post.status !== "published"}
                             <button
                                 onclick={() => handleRegenerate("image")}
                                 disabled={isRegenerating}
-                                class="text-sm font-bold flex items-center gap-2 text-primary hover:bg-primary/10 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                                class="text-[10px] font-bold flex items-center gap-1.5 text-primary hover:bg-primary/5 px-2 py-1 rounded transition-colors disabled:opacity-50"
                             >
-                                <Sparkles size={16} />
+                                <Sparkles size={12} />
                                 Regenerate Images
                             </button>
                         {/if}
                     </div>
-                    <div class="p-8">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="p-5">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {#if post.media_files && post.media_files.length > 0}
                                 {#each post.media_files as media, i}
                                     <div
-                                        class="group relative aspect-video rounded-2xl overflow-hidden border border-border bg-muted/20 shadow-inner"
+                                        class="group relative aspect-square rounded-lg overflow-hidden border border-border bg-muted/20 shadow-inner"
                                     >
                                         <img
                                             src={media.startsWith("http")
@@ -252,10 +256,10 @@
                                             class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
                                         >
                                             <button
-                                                class="bg-white/20 backdrop-blur-md p-2 rounded-lg hover:bg-white/40 transition-colors"
+                                                class="bg-white/20 backdrop-blur-sm p-1.5 rounded-md hover:bg-white/30 transition-colors"
                                             >
                                                 <RefreshCw
-                                                    size={20}
+                                                    size={16}
                                                     class="text-white"
                                                 />
                                             </button>
@@ -264,17 +268,17 @@
                                 {/each}
                             {:else}
                                 <div
-                                    class="md:col-span-2 aspect-video rounded-2xl border-4 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground bg-muted/5"
+                                    class="col-span-full aspect-[3/1] rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground bg-muted/5 p-6"
                                 >
                                     <ImageIcon
-                                        size={48}
-                                        class="mb-4 opacity-20"
+                                        size={32}
+                                        class="mb-2 opacity-20"
                                     />
-                                    <p class="font-bold text-lg opacity-40">
-                                        No images generated yet
+                                    <p class="font-bold text-sm opacity-40">
+                                        No images generated
                                     </p>
-                                    <p class="text-xs opacity-30 mt-2">
-                                        Click regenerate to create visuals
+                                    <p class="text-[10px] opacity-30 mt-1">
+                                        Trigger regeneration to create visuals
                                     </p>
                                 </div>
                             {/if}
@@ -282,57 +286,57 @@
                     </div>
                 </div>
 
-                <!-- Text Content Section -->
+                <!-- Post Text Section -->
                 <div
-                    class="bg-card border border-border rounded-2xl overflow-hidden shadow-sm"
+                    class="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex flex-col"
                 >
                     <div
-                        class="p-6 border-b border-border flex items-center justify-between bg-muted/5"
+                        class="px-5 py-3 border-b border-border flex items-center justify-between bg-muted/20"
                     >
-                        <h2 class="text-xl font-bold flex items-center gap-2">
-                            <Type size={22} class="text-primary" />
+                        <h2
+                            class="text-xs font-bold uppercase tracking-widest flex items-center gap-2"
+                        >
+                            <Type size={14} class="text-primary" />
                             Post Text
                         </h2>
                         {#if post.status !== "published"}
                             <button
                                 onclick={() => handleRegenerate("text")}
                                 disabled={isRegenerating}
-                                class="text-sm font-bold flex items-center gap-2 text-primary hover:bg-primary/10 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                                class="text-[10px] font-bold flex items-center gap-1.5 text-primary hover:bg-primary/5 px-2 py-1 rounded transition-colors disabled:opacity-50"
                             >
-                                <Sparkles size={16} />
+                                <Sparkles size={12} />
                                 Regenerate Text
                             </button>
                         {/if}
                     </div>
-                    <div class="p-8 space-y-6">
-                        <div>
-                            <textarea
-                                bind:value={post.text_content}
-                                disabled={post.status === "published"}
-                                class="w-full min-h-[300px] bg-background border border-input rounded-2xl p-6 text-lg leading-relaxed focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all resize-none shadow-inner disabled:opacity-70"
-                                placeholder="Write your content here..."
-                            ></textarea>
-                        </div>
+                    <div class="p-5 space-y-5">
+                        <textarea
+                            bind:value={post.text_content}
+                            disabled={post.status === "published"}
+                            class="w-full min-h-[400px] bg-background border border-input rounded-lg p-4 text-sm leading-relaxed focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none shadow-inner disabled:opacity-70"
+                            placeholder="Write your content here..."
+                        ></textarea>
 
-                        <div class="space-y-3">
+                        <div class="space-y-2">
                             <label
-                                class="text-sm font-bold text-muted-foreground flex items-center gap-2"
+                                class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5"
                             >
-                                <Hash size={16} />
+                                <Hash size={12} />
                                 Tags
                             </label>
-                            <div class="flex flex-wrap gap-2">
+                            <div class="flex flex-wrap gap-1.5">
                                 {#each post.tags as tag, i}
                                     <div
-                                        class="flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-full text-sm font-bold"
+                                        class="flex items-center gap-1 bg-primary/5 text-primary border border-primary/10 px-2 py-0.5 rounded text-[11px] font-bold"
                                     >
                                         #{tag}
                                         {#if post.status !== "published"}
                                             <button
                                                 onclick={() => removeTag(i)}
-                                                class="hover:text-red-500 transition-colors"
+                                                class="hover:text-destructive transition-colors ml-0.5"
                                             >
-                                                <X size={14} />
+                                                <X size={10} />
                                             </button>
                                         {/if}
                                     </div>
@@ -340,9 +344,9 @@
                                 {#if post.status !== "published"}
                                     <button
                                         onclick={addTag}
-                                        class="flex items-center gap-1.5 border border-dashed border-border px-3 py-1.5 rounded-full text-sm font-bold text-muted-foreground hover:border-primary hover:text-primary transition-all"
+                                        class="flex items-center gap-1 border border-dashed border-border px-2 py-0.5 rounded text-[11px] font-bold text-muted-foreground hover:border-primary hover:text-primary transition-all"
                                     >
-                                        <Plus size={14} />
+                                        <Plus size={10} />
                                         Add Tag
                                     </button>
                                 {/if}
@@ -352,77 +356,69 @@
                 </div>
             </div>
 
-            <!-- Sidebar / Management -->
-            <div class="space-y-6">
+            <!-- Sidebar -->
+            <div class="lg:col-span-4 space-y-6">
                 <div
-                    class="bg-card border border-border rounded-3xl p-8 shadow-xl space-y-8 sticky top-6"
+                    class="bg-card border border-border rounded-xl p-6 shadow-sm space-y-6 sticky top-6"
                 >
-                    <div>
-                        <h3
-                            class="text-xl font-black mb-6 flex items-center gap-2"
-                        >
-                            <Layers size={22} class="text-primary" />
-                            Management
-                        </h3>
+                    <h3
+                        class="text-xs font-bold uppercase tracking-widest border-b border-border pb-3 flex items-center gap-2"
+                    >
+                        <Layers size={14} class="text-primary" />
+                        Settings
+                    </h3>
 
-                        <div class="space-y-6">
-                            <!-- Social Network -->
-                            <div class="space-y-2">
-                                <label
-                                    class="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"
-                                >
-                                    <Share2 size={14} />
-                                    Social Network
-                                </label>
-                                <select
-                                    bind:value={post.social_network_id}
-                                    disabled={post.status === "published"}
-                                    class="w-full bg-muted/50 border border-input rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-primary outline-none transition-all disabled:opacity-50"
-                                >
-                                    {#if $currentProject?.social_networks}
-                                        {#each $currentProject.social_networks as sn}
-                                            <option value={sn.id}
-                                                >{sn.name}</option
-                                            >
-                                        {/each}
-                                    {/if}
-                                </select>
-                            </div>
-
-                            <!-- Content Plan -->
-                            <div class="space-y-2">
-                                <label
-                                    class="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"
-                                >
-                                    <CalIcon size={14} />
-                                    Content Plan
-                                </label>
-                                <select
-                                    bind:value={post.content_plan_id}
-                                    disabled={post.status === "published"}
-                                    class="w-full bg-muted/50 border border-input rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-primary outline-none transition-all disabled:opacity-50"
-                                >
-                                    <option value={null}>None</option>
-                                    {#each contentPlans as cp}
-                                        <option value={cp.id}
-                                            >{new Date(
-                                                cp.start_date,
-                                            ).toLocaleDateString()} - {cp.prompt?.substring(
-                                                0,
-                                                20,
-                                            )}...</option
-                                        >
+                    <div class="space-y-4">
+                        <!-- Social Network -->
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest"
+                            >
+                                Platform
+                            </label>
+                            <select
+                                bind:value={post.social_network_id}
+                                disabled={post.status === "published"}
+                                class="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all disabled:opacity-50"
+                            >
+                                {#if $currentProject?.social_networks}
+                                    {#each $currentProject.social_networks as sn}
+                                        <option value={sn.id}>{sn.name}</option>
                                     {/each}
-                                </select>
-                            </div>
+                                {/if}
+                            </select>
+                        </div>
 
-                            <!-- Publish Date -->
-                            <div class="space-y-2">
+                        <!-- Content Plan -->
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest"
+                            >
+                                Content Plan
+                            </label>
+                            <select
+                                bind:value={post.content_plan_id}
+                                disabled={post.status === "published"}
+                                class="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all disabled:opacity-50"
+                            >
+                                <option value={null}>None</option>
+                                {#each contentPlans as cp}
+                                    <option value={cp.id}>
+                                        {new Date(
+                                            cp.start_date,
+                                        ).toLocaleDateString()} - {cp.name ||
+                                            "Untitled"}
+                                    </option>
+                                {/each}
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1.5">
                                 <label
-                                    class="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"
+                                    class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest"
                                 >
-                                    <CalIcon size={14} />
-                                    Publish Date
+                                    Date
                                 </label>
                                 <input
                                     type="date"
@@ -439,17 +435,14 @@
                                         post.publish_at = `${e.currentTarget.value}T${timePart}`;
                                     }}
                                     disabled={post.status === "published"}
-                                    class="w-full bg-muted/50 border border-input rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-primary outline-none transition-all disabled:opacity-50"
+                                    class="w-full bg-background border border-input rounded-md px-2 py-1.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all disabled:opacity-50"
                                 />
                             </div>
-
-                            <!-- Publish Time -->
-                            <div class="space-y-2">
+                            <div class="space-y-1.5">
                                 <label
-                                    class="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"
+                                    class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest"
                                 >
-                                    <Clock size={14} />
-                                    Publish Time
+                                    Time
                                 </label>
                                 <input
                                     type="time"
@@ -470,39 +463,39 @@
                                         post.publish_at = `${datePart}T${e.currentTarget.value}:00`;
                                     }}
                                     disabled={post.status === "published"}
-                                    class="w-full bg-muted/50 border border-input rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-primary outline-none transition-all disabled:opacity-50"
+                                    class="w-full bg-background border border-input rounded-md px-2 py-1.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all disabled:opacity-50"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div class="pt-6 border-t border-border space-y-4">
+                    <div class="pt-6 border-t border-border space-y-2">
                         {#if post.status !== "published"}
                             <button
                                 onclick={handleSave}
                                 disabled={isSaving}
-                                class="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black shadow-xl shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
+                                class="w-full bg-primary text-primary-foreground py-2 rounded-lg font-bold text-sm shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
                             >
-                                <Save size={20} />
-                                Save Everything
+                                <Save size={16} />
+                                Save Post
                             </button>
 
                             <button
-                                class="w-full bg-green-500 text-white py-4 rounded-2xl font-black shadow-xl shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
+                                class="w-full bg-green-600 text-white py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-green-700 active:scale-95 transition-all flex items-center justify-center gap-2"
                                 onclick={() => {
                                     post.status = "approved";
                                     handleSave();
                                 }}
                             >
-                                <CheckCircle2 size={20} />
-                                Approve Post
+                                <CheckCircle2 size={16} />
+                                Approve
                             </button>
                         {:else}
                             <button
                                 disabled
-                                class="w-full bg-green-500 text-white py-4 rounded-2xl font-black opacity-50 cursor-not-allowed flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
+                                class="w-full bg-green-600 text-white py-2 rounded-lg font-bold text-sm opacity-50 cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                <Send size={20} />
+                                <Send size={16} />
                                 Published
                             </button>
                         {/if}
