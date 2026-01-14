@@ -569,13 +569,12 @@
                     <Plus size={16} />
                     Campaigns {#if selectedDates.length > 0}({selectedDates.length}){/if}
                 </button>
-                {#if selectedDates.length === 0}
-                    <div
-                        class="absolute top-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
-                    >
-                        Double-click on calendar days to select them for a new Campaign.
-                    </div>
-                {/if}
+                <div
+                    class="absolute top-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
+                >
+                    Double-click on calendar days to select them for a new
+                    Campaign.
+                </div>
             </div>
 
             <!-- View Toggle -->
