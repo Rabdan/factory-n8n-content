@@ -46,7 +46,10 @@
             const res = await fetch(
                 `/api/projects/${$currentProject.id}/content-plans`,
             );
-            if (res.ok) contentPlans = await res.json();
+            if (res.ok) {
+                contentPlans = await res.json();
+                console.log("Loaded content plans:", contentPlans);
+            }
         } catch (err) {
             console.error("Error fetching content plans:", err);
         }
@@ -122,12 +125,11 @@
 
     function getPlansForDate(date: Date) {
         const dStr = formatDate(date);
-        return contentPlans.filter((plan) => {
-            const start = new Date(plan.start_date);
-            const end = new Date(plan.end_date);
-            const current = new Date(dStr);
-            return current >= start && current <= end;
+        const plans = contentPlans.filter((plan) => {
+            const planDates = plan.dates || [];
+            return planDates.includes(dStr);
         });
+        return plans;
     }
 
     function getPostsForDate(date: Date, networkId?: number) {
@@ -190,9 +192,16 @@
 
     // Modal state for content plans
     let showPlanModal = $state(false);
+    let isEditingPlan = $state(false);
     let isPlanGenerating = $state(false);
     let planGenerationProgress = $state(0);
     let planGenerationStatus = $state("");
+
+    function isPast(dateString: string) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+        return new Date(dateString) < today;
+    }
 
     const PLAN_COLORS = [
         "#3b82f6", // Blue
@@ -228,27 +237,49 @@
         prompt: "",
         platforms: [] as number[],
         color: "#3b82f6",
-        start_date: "",
-        end_date: "",
+        dates: [] as string[],
     });
+
+    function openEditPlanModal(plan: any) {
+        isEditingPlan = true;
+        newPlan = {
+            ...plan,
+            platforms: plan.platforms || [],
+            dates: plan.dates || [],
+        };
+        selectedDates = [];
+        showPlanModal = true;
+    }
 
     function openCreatePlanModal() {
         if (selectedDates.length === 0) return;
-        const sorted = [...selectedDates].sort();
-        newPlan.start_date = sorted[0];
-        newPlan.end_date = sorted[sorted.length - 1];
-        newPlan.name = ""; // User wants "Plan Title" which they'll fill
+        newPlan.dates = [...selectedDates].sort();
+        newPlan.name = "";
         newPlan.color = getNextPlanColor();
-        newPlan.platforms = []; // Reset platforms selection for new plan
+        newPlan.platforms = [];
         newPlan.prompt = "";
         showPlanModal = true;
     }
 
     async function handleCreatePlan(startGenerate = false) {
-        if (!newPlan.prompt || newPlan.platforms.length === 0) {
-            alert("Fill prompt and select at least one network.");
+        if (
+            !newPlan.prompt ||
+            newPlan.platforms.length === 0 ||
+            newPlan.dates.length === 0
+        ) {
+            alert(
+                "Fill prompt, select at least one network, and choose dates.",
+            );
             return;
         }
+
+        const planData = {
+            name: newPlan.name,
+            prompt: newPlan.prompt,
+            dates: newPlan.dates,
+            platforms: newPlan.platforms,
+            color: newPlan.color,
+        };
 
         try {
             const res = await fetch(
@@ -256,7 +287,7 @@
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(newPlan),
+                    body: JSON.stringify(planData),
                 },
             );
 
@@ -437,18 +468,21 @@
         }
     }
 
+    let genError = $state("");
+
     async function handleAutogenerate() {
         if (genData.selectedNetworks.length === 0 || !genData.prompt) {
-            alert("Please select at least one network and provide a prompt.");
+            genError =
+                "Please select at least one network and provide a prompt.";
             return;
         }
 
+        genError = "";
         isGenerating = true;
         progress = 0;
         genStatus = "Analyzing prompt...";
 
         try {
-            // Simulate progress for UI demonstration since backend might be fast or async
             const steps = [
                 { p: 10, s: "Analyzing prompt..." },
                 { p: 30, s: "Generating content ideas..." },
@@ -458,28 +492,45 @@
                 { p: 100, s: "Done!" },
             ];
 
+            // Simulate progress for UI demonstration
             for (const step of steps) {
                 await new Promise((r) => setTimeout(r, 600));
                 progress = step.p;
                 genStatus = step.s;
             }
 
-            // In a real app, you'd send this to the backend
-            /*
-            const res = await fetch(`/api/projects/${$currentProject.id}/bulk-generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(genData)
-            });
-            */
+            // Send to backend
+            const res = await fetch(
+                `/api/projects/${$currentProject.id}/bulk-generate`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        networks: genData.selectedNetworks,
+                        prompt: genData.prompt,
+                        publishTime: genData.publishTime,
+                        days: genData.selectedDays,
+                    }),
+                },
+            );
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Generation failed");
+            }
 
             await fetchPosts();
             setTimeout(() => {
                 showGenModal = false;
                 isGenerating = false;
+                genError = "";
             }, 500);
         } catch (err) {
             console.error("Autogeneration error:", err);
+            genError =
+                err instanceof Error
+                    ? err.message
+                    : "Failed to generate content. Please try again.";
             isGenerating = false;
         }
     }
@@ -488,7 +539,7 @@
 <div class="space-y-6">
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <h1 class="text-3xl font-bold tracking-tight">Content Calendar</h1>
+            <h1 class="text-3xl font-bold tracking-tight">Content Planner</h1>
             {#if isPlanGenerating}
                 <div
                     class="flex items-center gap-3 bg-muted px-4 py-2 rounded-xl animate-pulse"
@@ -509,23 +560,24 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <button
-                onclick={generateAllPending}
-                class="flex items-center gap-2 bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-bold transition-all shadow hover:bg-primary/90 active:scale-95"
-            >
-                <Sparkles size={16} />
-                All Generate
-            </button>
-
-            {#if selectedDates.length > 0}
+            <div class="relative group">
                 <button
                     onclick={openCreatePlanModal}
-                    class="flex items-center gap-2 bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold transition-all shadow hover:bg-green-700 active:scale-95 animate-in slide-in-from-right-4"
+                    disabled={selectedDates.length === 0}
+                    class="flex items-center gap-2 bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold transition-all shadow hover:bg-green-700 active:scale-95 disabled:bg-gray-500 disabled:cursor-not-allowed disabled:shadow-none disabled:active:scale-100"
                 >
                     <Plus size={16} />
-                    Create Plan ({selectedDates.length})
+                    Campaigns {#if selectedDates.length > 0}({selectedDates.length}){/if}
                 </button>
-            {/if}
+                {#if selectedDates.length === 0}
+                    <div
+                        class="absolute top-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
+                    >
+                        You need to select days on the calendar to create a new
+                        Campaign.
+                    </div>
+                {/if}
+            </div>
 
             <!-- View Toggle -->
             <div class="flex bg-muted rounded-lg p-1">
@@ -588,14 +640,31 @@
                 </div>
                 {#each weekDates as date, i}
                     <div
-                        class="p-4 text-center border-l border-border bg-muted/10"
+                        class="p-2 text-center border-l border-border bg-muted/10"
                     >
                         <div
                             class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1"
                         >
                             {dayNames[i]}
                         </div>
-                        <div class="text-xl font-black">{date.getDate()}</div>
+                        <div class="text-xl font-black mb-2">
+                            {date.getDate()}
+                        </div>
+                        <div class="space-y-1">
+                            {#each getPlansForDate(date) as plan}
+                                <button
+                                    onclick={() => openEditPlanModal(plan)}
+                                    class="w-full text-left text-[10px] font-bold px-1.5 py-0.5 rounded border border-transparent flex items-center gap-1.5 truncate hover:brightness-110 transition-all"
+                                    style="background-color: {plan.color}20; color: {plan.color}; border-color: {plan.color}40"
+                                >
+                                    <div
+                                        class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                        style="background-color: {plan.color}"
+                                    ></div>
+                                    <span class="truncate">{plan.name}</span>
+                                </button>
+                            {/each}
+                        </div>
                     </div>
                 {/each}
             </div>
@@ -723,8 +792,6 @@
 
             <div class="grid grid-cols-7">
                 {#each monthDates as { date, isCurrentMonth }}
-                    {@const dayPlans = getPlansForDate(date)}
-                    {@const dayPosts = getPostsForDate(date)}
                     {@const isSelected = selectedDates.includes(
                         formatDate(date),
                     )}
@@ -743,7 +810,7 @@
                         <div
                             class="absolute inset-y-0 left-0 flex flex-col w-1.5 opacity-60"
                         >
-                            {#each dayPlans as plan}
+                            {#each getPlansForDate(date) as plan}
                                 <div
                                     class="flex-1"
                                     style="background-color: {plan.color}"
@@ -764,23 +831,24 @@
 
                         <!-- Plans List -->
                         <div class="flex flex-col gap-1 mb-2 ml-1">
-                            {#each dayPlans as plan}
-                                <div
-                                    class="text-[10px] font-bold px-1.5 py-0.5 rounded border border-transparent flex items-center gap-1.5 truncate"
+                            {#each getPlansForDate(date) as plan}
+                                <button
+                                    onclick={() => openEditPlanModal(plan)}
+                                    class="text-[10px] font-bold px-1.5 py-0.5 rounded border border-transparent flex items-center gap-1.5 truncate w-full text-left hover:brightness-110 transition-all"
                                     style="background-color: {plan.color}20; color: {plan.color}; border-color: {plan.color}40"
                                 >
                                     <div
-                                        class="w-1.5 h-1.5 rounded-full"
+                                        class="w-1.5 h-1.5 rounded-full flex-shrink-0"
                                         style="background-color: {plan.color}"
                                     ></div>
                                     <span class="truncate">{plan.name}</span>
-                                </div>
+                                </button>
                             {/each}
                         </div>
 
                         <!-- Posts List -->
                         <div class="space-y-1 ml-1">
-                            {#each dayPosts.slice(0, 3) as post}
+                            {#each getPostsForDate(date).slice(0, 3) as post}
                                 {@const net =
                                     $currentProject?.social_networks?.find(
                                         (n: {
@@ -826,11 +894,11 @@
                                     </span>
                                 </button>
                             {/each}
-                            {#if dayPosts.length > 3}
+                            {#if getPostsForDate(date).length > 3}
                                 <div
                                     class="text-[9px] font-bold text-muted-foreground ml-5"
                                 >
-                                    + {dayPosts.length - 3} more
+                                    + {getPostsForDate(date).length - 3} more
                                 </div>
                             {/if}
                         </div>
@@ -847,14 +915,14 @@
                                 })}
                             </h4>
 
-                            {#if dayPlans.length > 0}
+                            {#if getPlansForDate(date).length > 0}
                                 <div class="space-y-2 mb-4">
                                     <p
                                         class="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
                                     >
-                                        Active Plans
+                                        Active Campaigns
                                     </p>
-                                    {#each dayPlans as plan}
+                                    {#each getPlansForDate(date) as plan}
                                         <div
                                             class="p-2 rounded-xl border border-border bg-muted/20 flex flex-col gap-1"
                                         >
@@ -879,14 +947,14 @@
                                 </div>
                             {/if}
 
-                            {#if dayPosts.length > 0}
+                            {#if getPostsForDate(date).length > 0}
                                 <div class="space-y-2">
                                     <p
                                         class="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
                                     >
                                         Scheduled Posts
                                     </p>
-                                    {#each dayPosts as post}
+                                    {#each getPostsForDate(date) as post}
                                         <div
                                             class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
                                         >
@@ -968,10 +1036,12 @@
     <!-- Modal Overlay -->
     <div
         class="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] flex items-center justify-center p-4"
+        class:pointer-events-none={isPlanGenerating}
     >
         <div
             class="bg-card border w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border-t-4"
             style="border-top-color: {newPlan.color}"
+            class:opacity-50={isPlanGenerating}
         >
             <!-- Modal Header -->
             <div
@@ -986,13 +1056,15 @@
                     </div>
                     <div>
                         <h2 class="text-xl font-bold tracking-tight">
-                            Create Content Plan
+                            {isEditingPlan ? "Campaign" : "Create Campaign"}
                         </h2>
                     </div>
                 </div>
                 <button
-                    onclick={() => (showPlanModal = false)}
+                    onclick={() => !isPlanGenerating && (showPlanModal = false)}
                     class="p-1.5 hover:bg-muted rounded transition-colors"
+                    class:opacity-50={isPlanGenerating}
+                    class:pointer-events-none={isPlanGenerating}
                 >
                     <X size={18} />
                 </button>
@@ -1006,11 +1078,11 @@
                         <div class="space-y-2">
                             <label
                                 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-auto"
-                                >Plan Title</label
+                                >Campaign</label
                             >
                             <input
                                 bind:value={newPlan.name}
-                                placeholder="Plan title..."
+                                placeholder="Campaign title..."
                                 class="w-full bg-background border border-input rounded-md px-3 py-2 text-sm font-bold focus:ring-2 transition-all outline-none"
                                 style="--tw-ring-color: {newPlan.color}40"
                             />
@@ -1022,12 +1094,20 @@
                                 >Selected Dates</label
                             >
                             <div class="flex flex-wrap gap-1">
-                                {#each [...selectedDates].sort() as dStr}
+                                {#each newPlan.dates as dStr}
                                     <div
-                                        class="px-2 py-1 rounded bg-muted/50 border border-border text-[10px] font-bold font-mono"
+                                        class="text-xs font-mono font-bold bg-muted px-2 py-1 rounded"
                                     >
                                         {dStr}
                                     </div>
+                                {:else}
+                                    {#each [...selectedDates].sort() as dStr}
+                                        <div
+                                            class="px-2 py-1 rounded bg-muted/50 border border-border text-[10px] font-bold font-mono"
+                                        >
+                                            {dStr}
+                                        </div>
+                                    {/each}
                                 {/each}
                             </div>
                         </div>
@@ -1111,7 +1191,7 @@
                             class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"
                         >
                             <Layers size={14} />
-                            Prompt Plan
+                            Content Pillars
                         </label>
                         <textarea
                             bind:value={newPlan.prompt}
@@ -1128,24 +1208,200 @@
                 class="px-6 py-4 bg-muted/30 border-t border-border flex justify-end gap-2"
             >
                 <button
-                    onclick={() => (showPlanModal = false)}
+                    onclick={() => !isPlanGenerating && (showPlanModal = false)}
                     class="px-4 py-2 rounded-md font-bold text-sm hover:bg-muted transition-colors"
+                    class:opacity-50={isPlanGenerating}
+                    class:pointer-events-none={isPlanGenerating}
                 >
                     Cancel
                 </button>
                 <button
-                    onclick={() => handleCreatePlan(false)}
+                    onclick={() => !isPlanGenerating && handleCreatePlan(false)}
                     class="px-4 py-2 border rounded-md font-bold text-sm transition-all"
                     style="border-color: {newPlan.color}; color: {newPlan.color}; background-color: transparent"
+                    class:opacity-50={isPlanGenerating}
+                    class:pointer-events-none={isPlanGenerating}
                 >
-                    Save Plan
+                    Save Campaign
+                </button>
+                {#if !isPast(newPlan.dates[newPlan.dates.length - 1])}
+                    <button
+                        onclick={() =>
+                            !isPlanGenerating && handleCreatePlan(true)}
+                        class="px-5 py-2 text-white rounded-md font-bold text-sm shadow transition-all hover:brightness-110 active:scale-95"
+                        class:opacity-50={isPlanGenerating}
+                        class:pointer-events-none={isPlanGenerating}
+                        style="background-color: {newPlan.color}"
+                    >
+                        Bulk Generation
+                    </button>
+                {/if}
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Bulk Generation Modal -->
+{#if showGenModal}
+    <div
+        class="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] flex items-center justify-center p-4"
+        class:pointer-events-none={isGenerating}
+    >
+        <div
+            class="bg-card border w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            class:opacity-50={isGenerating}
+            class:pointer-events-auto={!isGenerating}
+        >
+            <!-- Modal Header -->
+            <div
+                class="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/50"
+            >
+                <div class="flex items-center gap-3">
+                    <div class="p-1.5 rounded bg-primary text-white shadow">
+                        <Sparkles size={20} />
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold tracking-tight">
+                            Bulk Generation
+                        </h2>
+                    </div>
+                </div>
+                <button
+                    onclick={() => !isGenerating && (showGenModal = false)}
+                    class="p-1.5 hover:bg-muted rounded transition-colors"
+                    class:opacity-50={isGenerating}
+                    class:pointer-events-none={isGenerating}
+                >
+                    <X size={18} />
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-6">
+                {#if genError}
+                    <div
+                        class="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg"
+                    >
+                        <div class="flex items-center gap-2">
+                            <AlertCircle size={16} />
+                            <span class="text-sm font-medium">{genError}</span>
+                        </div>
+                    </div>
+                {/if}
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm font-medium mb-2 block"
+                            >Selected Networks</label
+                        >
+                        <div class="flex flex-wrap gap-2">
+                            {#each genData.selectedNetworks as networkId}
+                                {@const network =
+                                    $currentProject?.social_networks?.find(
+                                        (n) => n.id === networkId,
+                                    )}
+                                {#if network}
+                                    <div
+                                        class="bg-muted px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"
+                                    >
+                                        <div
+                                            class="w-2 h-2 rounded-full"
+                                            style="background-color: {getNetworkColor(
+                                                network.id,
+                                            )}"
+                                        ></div>
+                                        {network.name}
+                                    </div>
+                                {/if}
+                            {/each}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium mb-2 block"
+                            >Selected Days</label
+                        >
+                        <div class="flex flex-wrap gap-2">
+                            {#each genData.selectedDays as day}
+                                <div
+                                    class="bg-muted px-3 py-1 rounded-full text-sm font-medium"
+                                >
+                                    {day}
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium mb-2 block"
+                            >Publish Time</label
+                        >
+                        <div
+                            class="bg-muted px-3 py-1 rounded-full text-sm font-medium"
+                        >
+                            {genData.publishTime}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium mb-2 block"
+                            >Prompt</label
+                        >
+                        <div class="bg-muted p-3 rounded-lg text-sm">
+                            {genData.prompt}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                {#if isGenerating}
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="relative">
+                                <div
+                                    class="w-8 h-8 border-2 border-primary/20 rounded-full"
+                                ></div>
+                                <div
+                                    class="absolute inset-0 w-8 h-8 border-2 border-primary rounded-full border-t-transparent animate-spin"
+                                ></div>
+                            </div>
+                            <span class="text-sm font-medium">{genStatus}</span>
+                        </div>
+
+                        <div class="w-full bg-muted rounded-full h-2">
+                            <div
+                                class="bg-primary h-2 rounded-full transition-all duration-500"
+                                style="width: {progress}%"
+                            ></div>
+                        </div>
+
+                        <div class="text-center text-sm text-muted-foreground">
+                            {progress}% Complete
+                        </div>
+                    </div>
+                {/if}
+            </div>
+
+            <!-- Modal Footer -->
+            <div
+                class="px-6 py-4 border-t border-border flex justify-end gap-3"
+            >
+                <button
+                    onclick={() => !isGenerating && (showGenModal = false)}
+                    class="px-4 py-2 border rounded-md font-bold text-sm transition-all"
+                    class:opacity-50={isGenerating}
+                    class:pointer-events-none={isGenerating}
+                >
+                    Cancel
                 </button>
                 <button
-                    onclick={() => handleCreatePlan(true)}
-                    class="px-5 py-2 text-white rounded-md font-bold text-sm shadow transition-all hover:brightness-110 active:scale-95"
-                    style="background-color: {newPlan.color}"
+                    onclick={handleAutogenerate}
+                    class="px-5 py-2 bg-primary text-white rounded-md font-bold text-sm shadow transition-all hover:brightness-110 active:scale-95"
+                    class:opacity-50={isGenerating}
+                    class:pointer-events-none={isGenerating}
+                    disabled={isGenerating}
                 >
-                    Start Generate
+                    {isGenerating ? "Generating..." : "Generate Content"}
                 </button>
             </div>
         </div>

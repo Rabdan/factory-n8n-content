@@ -49,14 +49,13 @@ CREATE TABLE IF NOT EXISTS social_networks (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Content Plan (Themes/Prompts for periods)
+-- Content Plan (Themes/Prompts for specific dates)
 CREATE TABLE IF NOT EXISTS content_plans (
     id SERIAL PRIMARY KEY,
     project_id INTEGER REFERENCES projects(id),
     name VARCHAR(255),
     social_network_id INTEGER REFERENCES social_networks(id), -- Keeping for compatibility
-    start_date DATE,
-    end_date DATE,
+    dates JSONB DEFAULT '[]'::jsonb, -- Array of dates ["2026-01-12", "2026-01-15"]
     prompt TEXT,
     platforms JSONB DEFAULT '[]'::jsonb,
     color VARCHAR(7) DEFAULT '#3b82f6',
