@@ -14,6 +14,8 @@
         Layers,
     } from "@lucide/svelte";
     import { onMount } from "svelte";
+    import { toDateKey } from "$lib/utils/date";
+    import DatePicker from "$lib/components/DatePicker.svelte";
     import { currentProject } from "$lib/stores";
     import { goto } from "$app/navigation";
 
@@ -48,7 +50,6 @@
             );
             if (res.ok) {
                 contentPlans = await res.json();
-                console.log("Loaded content plans:", contentPlans);
             }
         } catch (err) {
             console.error("Error fetching content plans:", err);
@@ -120,7 +121,12 @@
     }
 
     function formatDate(date: Date) {
-        return date.toISOString().split("T")[0];
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        const formattedDate = `${year}-${month}-${day}`;
+        return formattedDate;
     }
 
     function getPlansForDate(date: Date) {
@@ -199,7 +205,7 @@
 
     function isPast(dateString: string) {
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+        today.setHours(0, 0, 0, 1); // Set to start of day for accurate comparison
         return new Date(dateString) < today;
     }
 
@@ -235,17 +241,32 @@
     let newPlan = $state({
         name: "",
         prompt: "",
-        platforms: [] as number[],
+        platforms: [] as Array<{ id: number; publishTime: string }>,
         color: "#3b82f6",
         dates: [] as string[],
+        create: "new",
     });
 
     function openEditPlanModal(plan: any) {
         isEditingPlan = true;
+
+        // Convert old platform format to new format if needed
+        let platforms = plan.platforms || [];
+        if (platforms.length > 0 && typeof platforms[0] === "number") {
+            platforms = platforms.map((platformId: number) => ({
+                id: platformId,
+                publishTime:
+                    $currentProject?.social_networks?.find(
+                        (n) => n.id === platformId,
+                    )?.default_publish_time || "10:00:00",
+            }));
+        }
+
         newPlan = {
             ...plan,
-            platforms: plan.platforms || [],
+            platforms,
             dates: plan.dates || [],
+            create: "update",
         };
         selectedDates = [];
         showPlanModal = true;
@@ -256,17 +277,42 @@
         newPlan.dates = [...selectedDates].sort();
         newPlan.name = "";
         newPlan.color = getNextPlanColor();
-        newPlan.platforms = [];
+        // Initialize platforms with default times from social_networks
+        newPlan.platforms =
+            $currentProject?.social_networks?.map((network) => ({
+                id: network.id,
+                publishTime: network.default_publish_time || "10:00:00",
+            })) || [];
         newPlan.prompt = "";
+        newPlan.create = "new";
         showPlanModal = true;
     }
 
+    function addPlanDate(date: string) {
+        if (!newPlan.dates.includes(date)) {
+            newPlan.dates = [...newPlan.dates, date].sort();
+        }
+    }
+
+    function removePlanDate(date: string) {
+        newPlan.dates = newPlan.dates.filter((d) => d !== date);
+    }
+
+    function updatePlatformPublishTime(networkId: number, time: string) {
+        newPlan.platforms = newPlan.platforms.map((p) =>
+            p.id === networkId ? { ...p, publishTime: time } : p,
+        );
+    }
+
     async function handleCreatePlan(startGenerate = false) {
-        if (
-            !newPlan.prompt ||
-            newPlan.platforms.length === 0 ||
-            newPlan.dates.length === 0
-        ) {
+        if (!newPlan.prompt || newPlan.platforms.length === 0) {
+            alert(
+                "Fill prompt, select at least one network, and choose dates.",
+            );
+            return;
+        }
+
+        if (newPlan.dates.length === 0 && newPlan.create === "new") {
             alert(
                 "Fill prompt, select at least one network, and choose dates.",
             );
@@ -274,10 +320,14 @@
         }
 
         const planData = {
+            id: newPlan.create == "new" ? 0 : newPlan.id,
             name: newPlan.name,
             prompt: newPlan.prompt,
             dates: newPlan.dates,
-            platforms: newPlan.platforms,
+            platforms: newPlan.platforms.map((p) => ({
+                id: p.id,
+                publishTime: p.publishTime,
+            })),
             color: newPlan.color,
         };
 
@@ -431,6 +481,7 @@
     let isGenerating = $state(false);
     let progress = $state(0);
     let genStatus = $state("");
+    let showDatePicker = $state(false);
     let genData = $state({
         selectedNetworks: [] as number[],
         prompt: "",
@@ -886,20 +937,24 @@
                                             {/if}
                                         </div>
                                     </div>
-                                    <span
-                                        class="text-[10px] truncate font-medium group-hover/post:text-primary leading-tight"
+                                    <span class="text-[10px] font-bold truncate"
+                                        >{net.name}</span
                                     >
-                                        {post.text_content || "Post"}
-                                    </span>
+                                    <div class="flex items-center gap-0.5">
+                                        {#if post.status === "published"}
+                                            <CheckCheck
+                                                size={12}
+                                                class="text-green-500"
+                                            />
+                                        {:else if post.status === "approved"}
+                                            <Check
+                                                size={12}
+                                                class="text-green-500"
+                                            />
+                                        {/if}
+                                    </div>
                                 </button>
                             {/each}
-                            {#if getPostsForDate(date).length > 3}
-                                <div
-                                    class="text-[9px] font-bold text-muted-foreground ml-5"
-                                >
-                                    + {getPostsForDate(date).length - 3} more
-                                </div>
-                            {/if}
                         </div>
 
                         <!-- Tooltip -->
@@ -966,6 +1021,21 @@
                                                 >{post.text_content ||
                                                     "Post"}</span
                                             >
+                                            <div
+                                                class="flex items-center gap-0.5"
+                                            >
+                                                {#if post.status === "published"}
+                                                    <CheckCheck
+                                                        size={12}
+                                                        class="text-green-500"
+                                                    />
+                                                {:else if post.status === "approved"}
+                                                    <Check
+                                                        size={12}
+                                                        class="text-green-500"
+                                                    />
+                                                {/if}
+                                            </div>
                                         </div>
                                     {/each}
                                 </div>
@@ -1087,31 +1157,58 @@
                             />
                         </div>
 
-                        <div class="space-y-2">
-                            <label
-                                class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                                >Selected Dates</label
+                        <div class="space-y-2 relative">
+                            <div class="flex items-center justify-between">
+                                <label
+                                    class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+                                    >Selected Dates</label
+                                >
+                                <button
+                                    onclick={() => (showDatePicker = true)}
+                                    class="text-xs px-2 py-1 bg-primary text-white rounded hover:brightness-110"
+                                    class:opacity-50={isPlanGenerating}
+                                    class:pointer-events-none={isPlanGenerating}
+                                >
+                                    + Add
+                                </button>
+                            </div>
+                            {#if showDatePicker}
+                                <div
+                                    class="absolute top-0 right-0 bg-opacity-50"
+                                >
+                                    <DatePicker
+                                        on:dateSelected={(e) => {
+                                            addPlanDate(e.detail.date);
+                                            showDatePicker = false;
+                                        }}
+                                    />
+                                </div>
+                            {/if}
+                            <div
+                                class="flex flex-wrap gap-1 max-h-24 overflow-y-auto"
                             >
-                            <div class="flex flex-wrap gap-1">
                                 {#each newPlan.dates as dStr}
                                     <div
-                                        class="text-xs font-mono font-bold bg-muted px-2 py-1 rounded"
+                                        class="flex items-center gap-1 bg-muted px-2 py-1 rounded group"
                                     >
-                                        {dStr}
-                                    </div>
-                                {:else}
-                                    {#each [...selectedDates].sort() as dStr}
-                                        <div
-                                            class="px-2 py-1 rounded bg-muted/50 border border-border text-[10px] font-bold font-mono"
+                                        <span
+                                            class="text-xs font-mono font-bold"
+                                            >{dStr}</span
                                         >
-                                            {dStr}
-                                        </div>
-                                    {/each}
+                                        <button
+                                            onclick={() => removePlanDate(dStr)}
+                                            class="text-muted-foreground hover:text-destructive transition-colors"
+                                            class:opacity-50={isPlanGenerating}
+                                            class:pointer-events-none={isPlanGenerating}
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
                                 {/each}
                             </div>
                         </div>
 
-                        <!-- Social Networks Selection -->
+                        <!-- Social Networks Selection with Time -->
                         <div class="space-y-3">
                             <label
                                 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"
@@ -1119,65 +1216,92 @@
                                 <Share2 size={12} />
                                 Platforms
                             </label>
-                            <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-2">
                                 {#if $currentProject?.social_networks}
                                     {#each $currentProject.social_networks as network}
-                                        <button
-                                            onclick={() => {
-                                                if (
-                                                    newPlan.platforms.includes(
-                                                        network.id,
-                                                    )
-                                                ) {
-                                                    newPlan.platforms =
-                                                        newPlan.platforms.filter(
-                                                            (id) =>
-                                                                id !==
-                                                                network.id,
-                                                        );
-                                                } else {
-                                                    newPlan.platforms = [
-                                                        ...newPlan.platforms,
-                                                        network.id,
-                                                    ];
-                                                }
-                                                updatePlanPrompt();
-                                            }}
-                                            class="p-2 rounded-lg border-2 transition-all flex items-center gap-2 {newPlan.platforms.includes(
-                                                network.id,
-                                            )
+                                        {@const isSelected =
+                                            newPlan.platforms.some(
+                                                (p) => p.id === network.id,
+                                            )}
+                                        {@const platform =
+                                            newPlan.platforms.find(
+                                                (p) => p.id === network.id,
+                                            )}
+                                        <div
+                                            class="p-2 rounded-lg border-2 transition-all {isSelected
                                                 ? 'bg-primary/5'
                                                 : 'border-border hover:border-primary/40'}"
-                                            style="border-color: {newPlan.platforms.includes(
-                                                network.id,
-                                            )
+                                            style="border-color: {isSelected
                                                 ? newPlan.color
                                                 : ''}"
                                         >
                                             <div
-                                                class="w-6 h-6 rounded {getNetworkColor(
-                                                    network.id,
-                                                )} flex items-center justify-center text-white text-[10px]"
+                                                class="flex items-center justify-between"
                                             >
-                                                {#if network.logo_url}
-                                                    <img
-                                                        src={network.logo_url.startsWith(
-                                                            "http",
-                                                        )
-                                                            ? network.logo_url
-                                                            : `${API_BASE}/uploads/${network.logo_url}`}
-                                                        alt=""
-                                                        class="w-full h-full object-cover"
+                                                <button
+                                                    onclick={() => {
+                                                        if (isSelected) {
+                                                            newPlan.platforms =
+                                                                newPlan.platforms.filter(
+                                                                    (p) =>
+                                                                        p.id !==
+                                                                        network.id,
+                                                                );
+                                                        } else {
+                                                            newPlan.platforms =
+                                                                [
+                                                                    ...newPlan.platforms,
+                                                                    {
+                                                                        id: network.id,
+                                                                        publishTime:
+                                                                            network.default_publish_time ||
+                                                                            "10:00:00",
+                                                                    },
+                                                                ];
+                                                        }
+                                                    }}
+                                                    class="flex items-center gap-2"
+                                                >
+                                                    <div
+                                                        class="w-6 h-6 rounded {getNetworkColor(
+                                                            network.id,
+                                                        )} flex items-center justify-center text-white text-[10px]"
+                                                    >
+                                                        {#if network.logo_url}
+                                                            <img
+                                                                src={network.logo_url}
+                                                                alt={network.name}
+                                                                class="w-4 h-4 rounded"
+                                                            />
+                                                        {:else}
+                                                            <Share2 size={12} />
+                                                        {/if}
+                                                    </div>
+                                                    <span
+                                                        class="text-sm font-black truncate"
+                                                    >
+                                                        {network.name}
+                                                    </span>
+                                                </button>
+
+                                                {#if isSelected}
+                                                    <input
+                                                        type="time"
+                                                        bind:value={
+                                                            platform.publishTime
+                                                        }
+                                                        onchange={(e) =>
+                                                            updatePlatformPublishTime(
+                                                                network.id,
+                                                                e.target.value,
+                                                            )}
+                                                        class="text-xs px-2 py-1 rounded border border-border bg-background"
+                                                        class:opacity-50={isPlanGenerating}
+                                                        class:pointer-events-none={isPlanGenerating}
                                                     />
-                                                {:else}
-                                                    <Share2 size={12} />
                                                 {/if}
                                             </div>
-                                            <span
-                                                class="text-[10px] font-bold truncate"
-                                                >{network.name}</span
-                                            >
-                                        </button>
+                                        </div>
                                     {/each}
                                 {/if}
                             </div>

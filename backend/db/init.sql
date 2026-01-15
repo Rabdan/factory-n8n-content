@@ -43,7 +43,6 @@ CREATE TABLE IF NOT EXISTS social_networks (
     logo_url VARCHAR(255),
     publishing_webhook_url VARCHAR(255),
     generation_webhook_url VARCHAR(255),
-    default_publish_days JSONB, -- Array of days [1, 3, 5]
     default_publish_time TIME,
     default_prompt TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -114,13 +113,13 @@ VALUES
 (2, 2, 'Owner')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO social_networks (project_id, name, logo_url, default_publish_days, default_publish_time)
+INSERT INTO social_networks (project_id, name, logo_url, default_publish_time)
 VALUES
-(1, 'Instagram', 'instagram-logo.png', '["Mon", "Wed", "Fri"]', '10:00:00'),
-(1, 'Facebook', 'facebook-logo.png', '["Tue", "Thu"]', '14:00:00'),
-(2, 'Instagram', 'instagram-logo.png', '["Mon", "Fri"]', '09:00:00'),
-(2, 'Twitter', 'twitter-logo.png', '["Mon", "Tue", "Wed", "Thu", "Fri"]', '12:00:00'),
-(2, 'Facebook', 'facebook-logo.png', '["Sat", "Sun"]', '18:00:00');
+(1, 'Instagram', 'instagram-logo.png', '10:00:00'),
+(1, 'Facebook', 'facebook-logo.png', '14:00:00'),
+(2, 'Instagram', 'instagram-logo.png', '09:00:00'),
+(2, 'Twitter', 'twitter-logo.png', '12:00:00'),
+(2, 'Facebook', 'facebook-logo.png', '18:00:00');
 
 -- Posts for January 2026
 INSERT INTO posts (project_id, social_network_id, publish_at, text_content, status)

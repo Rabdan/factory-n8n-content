@@ -179,8 +179,7 @@
                     <p
                         class="text-muted-foreground text-[10px] font-semibold uppercase tracking-tight opacity-70"
                     >
-                        {post.social_network_name || "Platform Unassigned"} • ID
-                        #{post.id}
+                        {post.social_network_name || "Platform Unassigned"} • ID #{post.id}
                     </p>
                 </div>
             </div>
@@ -394,7 +393,7 @@
                             <label
                                 class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest"
                             >
-                                Content Plan
+                                Campaign
                             </label>
                             <select
                                 bind:value={post.content_plan_id}

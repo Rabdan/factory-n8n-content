@@ -21,32 +21,17 @@
 		publishing_webhook_url: "",
 		generation_webhook_url: "",
 		default_publish_time: "10:00",
-		default_publish_days: [] as string[],
 		default_prompt: "",
 	});
 
 	let logoFile: File | null = $state(null);
 	let logoPreview = $state("");
 
-	const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 	function handleFileChange(e: Event) {
 		const target = e.target as HTMLInputElement;
 		if (target.files && target.files[0]) {
 			logoFile = target.files[0];
 			logoPreview = URL.createObjectURL(logoFile);
-		}
-	}
-
-	function toggleDay(day: string) {
-		if (newNetwork.default_publish_days.includes(day)) {
-			newNetwork.default_publish_days =
-				newNetwork.default_publish_days.filter((d) => d !== day);
-		} else {
-			newNetwork.default_publish_days = [
-				...newNetwork.default_publish_days,
-				day,
-			];
 		}
 	}
 
@@ -110,9 +95,6 @@
 						...newNetwork,
 						logo_url,
 						default_publish_time: newNetwork.default_publish_time,
-						default_publish_days: JSON.stringify(
-							newNetwork.default_publish_days,
-						),
 						default_prompt: newNetwork.default_prompt,
 					}),
 				},
@@ -164,7 +146,6 @@
 			publishing_webhook_url: "",
 			generation_webhook_url: "",
 			default_publish_time: "10:00",
-			default_publish_days: [],
 			default_prompt: "",
 		};
 		logoFile = null;
@@ -357,25 +338,7 @@
 									{network.default_publish_time}
 								</div>
 							</div>
-							<div>
-								<label class="text-muted-foreground mb-1 block"
-									>Default Days</label
-								>
-								<div class="flex gap-1">
-									{#each daysOfWeek as day}
-										<span
-											class="px-2 py-1 text-xs rounded-md {(
-												network.default_publish_days ||
-												[]
-											).includes(day)
-												? 'bg-primary text-primary-foreground font-medium'
-												: 'bg-muted text-muted-foreground opacity-50'}"
-										>
-											{day}
-										</span>
-									{/each}
-								</div>
-							</div>
+							
 						</div>
 
 						{#if network.default_prompt}
@@ -535,26 +498,7 @@
 									class="w-full px-4 py-2.5 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm"
 								/>
 							</div>
-							<div>
-								<label class="text-sm font-semibold mb-2 block"
-									>Default Publish Days</label
-								>
-								<div class="flex flex-wrap gap-2">
-									{#each daysOfWeek as day}
-										<button
-											type="button"
-											onclick={() => toggleDay(day)}
-											class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all {newNetwork.default_publish_days.includes(
-												day,
-											)
-												? 'bg-primary border-primary text-primary-foreground shadow-md scale-105'
-												: 'bg-background border-border text-muted-foreground hover:border-primary/50'}"
-										>
-											{day}
-										</button>
-									{/each}
-								</div>
-							</div>
+							
 						</div>
 
 						<!-- Prompt -->

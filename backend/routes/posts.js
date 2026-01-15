@@ -6,15 +6,19 @@ const db = require('../db');
 router.get('/', async (req, res) => {
     const { projectId, start, end } = req.query; // Filter by date range
     try {
-        let query = 'SELECT * FROM posts WHERE project_id = $1';
+        let query = `
+            SELECT p.*, sn.name as social_network_name 
+            FROM posts p 
+            LEFT JOIN social_networks sn ON p.social_network_id = sn.id 
+            WHERE p.project_id = $1`;
         const params = [projectId];
 
         if (start && end) {
-            query += ' AND publish_at BETWEEN $2 AND $3';
+            query += ' AND p.publish_at BETWEEN $2 AND $3';
             params.push(start, end);
         }
 
-        query += ' ORDER BY publish_at ASC';
+        query += ' ORDER BY p.publish_at ASC';
 
         const result = await db.query(query, params);
         res.json(result.rows);
