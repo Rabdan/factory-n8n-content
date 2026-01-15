@@ -623,7 +623,7 @@
                 <div
                     class="absolute top-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-3 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
                 >
-                    Double-click on calendar days to select them for a new
+                    One-click on calendar days to select them for a new
                     Campaign.
                 </div>
             </div>
@@ -848,13 +848,13 @@
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <!-- svelte-ignore a11y_no_static_element_interactions -->
                     <div
-                        ondblclick={() => toggleDateSelection(date)}
+                        onclick={() => toggleDateSelection(date)}
                         class="group relative min-h-[160px] p-3 border-r border-b border-border last:border-r-0 transition-all {isSelected
                             ? 'bg-primary/5 ring-2 ring-primary ring-inset z-10'
                             : !isCurrentMonth
                               ? 'bg-muted/5 opacity-40'
                               : 'bg-background hover:bg-muted/10'}"
-                        title="Double-click to select date"
+                        title="One-click to select date"
                     >
                         <!-- Plan Indicators (Left Bars) -->
                         <div
