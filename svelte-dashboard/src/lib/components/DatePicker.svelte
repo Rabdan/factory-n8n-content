@@ -74,7 +74,9 @@
     }
 </script>
 
-<div class="bit-calendar bg-white rounded shadow p-3 border border-gray-200">
+<div
+    class="bit-calendar bg-card border rounded shadow p-3 border border-gray-200"
+>
     <div class="flex justify-between items-center mb-2 text-sm">
         <button class="px-1" on:click={prevMonth} aria-label="Previous month"
             >«</button

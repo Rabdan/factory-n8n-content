@@ -1332,7 +1332,7 @@
             >
                 <button
                     onclick={() => !isPlanGenerating && (showPlanModal = false)}
-                    class="px-4 py-2 rounded-md font-bold text-sm hover:bg-muted transition-colors"
+                    class="px-4 py-2 rounded-md font-bold text-sm hover:bg-muted transition-colors border border-gray-800 dark:border-gray-300"
                     class:opacity-50={isPlanGenerating}
                     class:pointer-events-none={isPlanGenerating}
                 >
