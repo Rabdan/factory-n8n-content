@@ -11,6 +11,9 @@ services:
       - PORT=3060
     volumes:
       - ./data/uploads:/data/uploads
+      - ./backend:/app
+      - /app/node_modules
+    command: npm start
     depends_on:
       - db
     networks:

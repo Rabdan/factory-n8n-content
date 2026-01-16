@@ -66,7 +66,25 @@ app.get('/health', (req, res) => {
 });
 
 // File Upload Endpoint
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+app.post('/api/upload', (req, res, next) => {
+    console.log('Upload request received:', {
+        headers: req.headers,
+        method: req.method,
+        url: req.url,
+        contentType: req.get('Content-Type')
+    });
+    next();
+}, upload.single('file'), async (req, res) => {
+    console.log('After multer middleware:', {
+        file: req.file ? {
+            originalname: req.file.originalname,
+            filename: req.file.filename,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        } : null,
+        body: req.body
+    });
+
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
@@ -77,8 +95,10 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             'INSERT INTO uploads (project_id, filename, filepath, file_type) VALUES ($1, $2, $3, $4) RETURNING *',
             [project_id || null, req.file.originalname, req.file.filename, req.file.mimetype]
         );
+        console.log('Upload successful:', result.rows[0]);
         res.json(result.rows[0]);
     } catch (err) {
+        console.error('Upload error:', err);
         res.status(500).json({ error: err.message });
     }
 });
