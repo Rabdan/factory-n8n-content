@@ -161,26 +161,27 @@
         editingNetworkId = null;
     }
 
-function editNetwork(network: any) {
-		newNetwork = {
-			name: network.name,
-			publishing_webhook_url: network.publishing_webhook_url,
-			generation_webhook_url: network.generation_webhook_url,
-			default_publish_time: network.default_publish_time,
-			default_prompt: network.default_prompt,
-		};
-		logoPreview = network.logo_url && !network.logo_url.startsWith("http") 
-			? `/uploads/${network.logo_url}` 
-			: network.logo_url || "";
-		logoFile = null;
-		editingNetworkId = network.id;
-		showAddNetwork = true;
-		
-		setTimeout(() => {
-			const editForm = document.querySelector('[data-edit-form]');
-			editForm?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-		}, 100);
-	}
+    function editNetwork(network: any) {
+        newNetwork = {
+            name: network.name,
+            publishing_webhook_url: network.publishing_webhook_url,
+            generation_webhook_url: network.generation_webhook_url,
+            default_publish_time: network.default_publish_time,
+            default_prompt: network.default_prompt,
+        };
+        logoPreview =
+            network.logo_url && !network.logo_url.startsWith("http")
+                ? `/uploads/${network.logo_url}`
+                : network.logo_url || "";
+        logoFile = null;
+        editingNetworkId = network.id;
+        showAddNetwork = true;
+
+        setTimeout(() => {
+            const editForm = document.querySelector("[data-edit-form]");
+            editForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+    }
 
     function getAvatar(email: string) {
         return email ? email[0].toUpperCase() : "?";
@@ -265,26 +266,30 @@ function editNetwork(network: any) {
     <div class="bg-card border border-border rounded-xl p-6">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-xl font-semibold">Social Networks</h2>
-{#if !showAddNetwork}
-				<button
-					onclick={() => {
-						showAddNetwork = true;
-						setTimeout(() => {
-							const editForm = document.querySelector('[data-edit-form]');
-							editForm?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-						}, 100);
-					}}
-					class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm"
-				>
-					<Plus size={18} />
-					Add Network
-				</button>
-			{/if}
+            {#if !showAddNetwork}
+                <button
+                    onclick={() => {
+                        showAddNetwork = true;
+                        setTimeout(() => {
+                            const editForm =
+                                document.querySelector("[data-edit-form]");
+                            editForm?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "center",
+                            });
+                        }, 100);
+                    }}
+                    class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm"
+                >
+                    <Plus size={18} />
+                    Add Network
+                </button>
+            {/if}
         </div>
 
         <div class="space-y-6">
-{#if $currentProject && $currentProject.social_networks}
-				{#each $currentProject.social_networks.filter((n: any) => n.id !== editingNetworkId) as network (network.id)}
+            {#if $currentProject && $currentProject.social_networks}
+                {#each $currentProject.social_networks.filter((n: any) => n.id !== editingNetworkId) as network (network.id)}
                     <div
                         class="border border-border rounded-xl p-6 hover:shadow-sm transition-shadow"
                     >
@@ -294,16 +299,16 @@ function editNetwork(network: any) {
                                     class="w-12 h-12 {network.color ||
                                         'bg-muted'} rounded-xl flex items-center justify-center overflow-hidden"
                                 >
-{#if network.logo_url}
-										<img
-											src={network.logo_url.startsWith(
-												"http",
-											)
-												? network.logo_url
-												: `/uploads/${network.logo_url}`}
-											alt={network.name}
-											class="w-full h-full object-cover"
-										/>
+                                    {#if network.logo_url}
+                                        <img
+                                            src={network.logo_url.startsWith(
+                                                "http",
+                                            )
+                                                ? network.logo_url
+                                                : `/uploads/${network.logo_url}`}
+                                            alt={network.name}
+                                            class="w-full h-full object-cover"
+                                        />
                                     {:else}
                                         <ImageIcon
                                             size={24}
@@ -404,11 +409,11 @@ function editNetwork(network: any) {
                 {/each}
             {/if}
 
-{#if showAddNetwork}
-				<div
-					data-edit-form
-					class="border-2 border-primary/20 border-dashed rounded-xl p-8 bg-primary/5 animate-in fade-in slide-in-from-bottom-4 duration-300"
-				>
+            {#if showAddNetwork}
+                <div
+                    data-edit-form
+                    class="border-2 border-primary/20 border-dashed rounded-xl p-8 bg-primary/5 animate-in fade-in slide-in-from-bottom-4 duration-300"
+                >
                     <div class="flex items-center justify-between mb-8">
                         <h3 class="text-lg font-bold flex items-center gap-2">
                             {#if editingNetworkId}
