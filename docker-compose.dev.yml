@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
@@ -12,7 +12,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - ./data/uploads:/data/uploads
+      - ./data/uploads:/app/data/uploads
     depends_on:
       - db
     networks:
