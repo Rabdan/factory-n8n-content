@@ -170,7 +170,7 @@ function editNetwork(network: any) {
 			default_prompt: network.default_prompt,
 		};
 		logoPreview = network.logo_url && !network.logo_url.startsWith("http") 
-			? `${API_BASE}/uploads/${network.logo_url}` 
+			? `/uploads/${network.logo_url}` 
 			: network.logo_url || "";
 		logoFile = null;
 		editingNetworkId = network.id;
@@ -294,16 +294,16 @@ function editNetwork(network: any) {
                                     class="w-12 h-12 {network.color ||
                                         'bg-muted'} rounded-xl flex items-center justify-center overflow-hidden"
                                 >
-                                    {#if network.logo_url}
-                                        <img
-                                            src={network.logo_url.startsWith(
-                                                "http",
-                                            )
-                                                ? network.logo_url
-                                                : `${API_BASE}/uploads/${network.logo_url}`}
-                                            alt={network.name}
-                                            class="w-full h-full object-cover"
-                                        />
+{#if network.logo_url}
+										<img
+											src={network.logo_url.startsWith(
+												"http",
+											)
+												? network.logo_url
+												: `/uploads/${network.logo_url}`}
+											alt={network.name}
+											class="w-full h-full object-cover"
+										/>
                                     {:else}
                                         <ImageIcon
                                             size={24}

@@ -25,6 +25,8 @@ services:
       - "5175:5175"
     environment:
       - VITE_API_URL=http://backend:3060
+    volumes:
+      - ./data/uploads:/app/data/uploads
     depends_on:
       - backend
     networks:

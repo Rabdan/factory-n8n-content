@@ -28,6 +28,7 @@ services:
     volumes:
       - ./svelte-dashboard:/app
       - /app/node_modules
+      - ./data/uploads:/app/data/uploads
     depends_on:
       - backend
     networks:

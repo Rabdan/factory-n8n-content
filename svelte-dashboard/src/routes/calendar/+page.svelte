@@ -735,7 +735,7 @@
                                     <img
                                         src={network.logo_url.startsWith("http")
                                             ? network.logo_url
-                                            : `${API_BASE}/uploads/${network.logo_url}`}
+                                            : `/uploads/${network.logo_url}`}
                                         alt=""
                                         class="w-full h-full object-cover"
                                     />
@@ -925,7 +925,7 @@
                                                         "http",
                                                     )
                                                         ? net.logo_url
-                                                        : `${API_BASE}/uploads/${net.logo_url}`}
+                                                        : `/uploads/${net.logo_url}`}
                                                     alt=""
                                                     class="w-full h-full object-cover"
                                                 />

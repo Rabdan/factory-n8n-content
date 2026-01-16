@@ -28,7 +28,6 @@ data/postgres/
 data/logs/
 backend/node_modules/
 svelte-dashboard/node_modules/
-uploads/
 
 # IDE files
 .vscode/

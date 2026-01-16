@@ -247,7 +247,7 @@
                                         <img
                                             src={media.startsWith("http")
                                                 ? media
-                                                : `${import.meta.env.VITE_API_URL || ""}/uploads/${media}`}
+                                                : `/uploads/${media}`}
                                             alt="Post content"
                                             class="w-full h-full object-cover"
                                         />
