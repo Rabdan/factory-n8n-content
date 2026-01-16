@@ -13,6 +13,8 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
+RUN mkdir -p /data/uploads && chmod -R 777 /data/uploads
+
 # Expose the port the app runs on
 EXPOSE 3060
 
