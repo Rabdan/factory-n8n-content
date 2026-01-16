@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3060;
 const logger = require("./utils/logger");
 
 // Middleware and Upload Config
-const dataDir = path.resolve(__dirname, "..", "data");
+const dataDir = path.resolve(__dirname, "data");
 const uploadDir = path.join(dataDir, "uploads");
 const logDir = path.join(dataDir, "log");
 

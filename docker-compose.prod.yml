@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
@@ -10,9 +10,7 @@ services:
       - DATABASE_URL=postgres://user:password@db:5432/contentfactory
       - PORT=3060
     volumes:
-      - ./data/uploads:/data/uploads
-      - ./backend:/app
-      - /app/node_modules
+      - ./data/uploads:/app/data/uploads
     command: npm start
     depends_on:
       - db
