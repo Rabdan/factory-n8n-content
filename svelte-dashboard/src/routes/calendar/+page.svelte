@@ -224,7 +224,7 @@
     function updatePlanPrompt() {
         if (!$currentProject?.social_networks) return;
         const selectedNets = $currentProject.social_networks.filter((n: any) =>
-            newPlan.platforms.includes(n.id),
+            newPlan.platforms.some((p) => p.id === n.id),
         );
         if (selectedNets.length === 0) {
             newPlan.prompt = "";
@@ -375,34 +375,6 @@
         } finally {
             isPlanGenerating = false;
         }
-    }
-
-    async function generateAllPending() {
-        const pending = contentPlans.filter((p) => !p.is_generated);
-        if (pending.length === 0) {
-            alert("No pending plans to generate.");
-            return;
-        }
-
-        isPlanGenerating = true;
-        planGenerationProgress = 0;
-
-        for (let i = 0; i < pending.length; i++) {
-            const plan = pending[i];
-            planGenerationStatus = `Generating: ${plan.name} (${i + 1}/${pending.length})`;
-            planGenerationProgress = Math.round((i / pending.length) * 100);
-
-            await generatePlanContent(plan.id);
-            // Re-fetch posts after each generation to show progress visually
-            await fetchPosts();
-        }
-
-        planGenerationProgress = 100;
-        planGenerationStatus = "All plans generated!";
-        setTimeout(() => {
-            isPlanGenerating = false;
-            planGenerationProgress = 0;
-        }, 2000);
     }
 
     function navigateToPost(id: number) {
@@ -1259,6 +1231,7 @@
                                                                     },
                                                                 ];
                                                         }
+                                                        updatePlanPrompt();
                                                     }}
                                                     class="flex items-center gap-2"
                                                 >

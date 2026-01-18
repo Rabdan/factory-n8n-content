@@ -3,6 +3,9 @@ const router = express.Router();
 const db = require("../db");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
 // Get all projects for (mock) user
 router.get("/", async (req, res) => {
@@ -313,6 +316,7 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
     const plan = planResult.rows[0];
     const dates = JSON.parse(plan.dates || "[]");
     const platforms = JSON.parse(plan.platforms || "[]");
+    const prompt = JSON.parse(plan.prompt || "");
 
     // Get social networks for platforms
     const networksResult = await db.query(
@@ -335,143 +339,140 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
     // Generate content for each date and network combination
     for (const date of dates) {
       for (const network of networks) {
-        try {
-          // Check if post already exists for this date and network
-          const existingPostResult = await db.query(
-            `SELECT * FROM posts
-             WHERE content_plan_id = $1
-             AND social_network_id = $2
-             AND DATE(publish_at) = $3
-             AND status IN ('approved', 'published')`,
-            [planId, network.id, date],
-          );
-
-          if (existingPostResult.rows.length > 0) {
-            console.log(
-              `Skipping generation for ${date} - ${network.name}: post already exists with approved/published status`,
+        if (network.generation_webhook_url) {
+          try {
+            // Check if post already exists for this date and network
+            const existingPostResult = await db.query(
+              `SELECT * FROM posts
+              WHERE content_plan_id = $1
+              AND social_network_id = $2
+              AND DATE(publish_at) = $3
+              AND status IN ('approved', 'published')`,
+              [planId, network.id, date],
             );
-            continue;
-          }
 
-          // Check for existing draft post to overwrite
-          const draftPostResult = await db.query(
-            `SELECT * FROM posts
-             WHERE content_plan_id = $1
-             AND social_network_id = $2
-             AND DATE(publish_at) = $3
-             AND status = 'draft'`,
-            [planId, network.id, date],
-          );
-
-          const publishTime = network.default_publish_time || "10:00:00";
-          const publishAt = `${date} ${publishTime}`;
-
-          let postId;
-          if (draftPostResult.rows.length > 0) {
-            // Update existing draft post
-            const updateResult = await db.query(
-              `UPDATE posts SET
-               text_content = $1,
-               status = 'generating',
-               n8n_task_id = $2
-               WHERE id = $3 RETURNING *`,
-              [plan.prompt, null, draftPostResult.rows[0].id],
-            );
-            postId = updateResult.rows[0].id;
-            console.log(`Updated draft post for ${date} - ${network.name}`);
-          } else {
-            // Create new post
-            const createResult = await db.query(
-              `INSERT INTO posts (
-                project_id,
-                social_network_id,
-                content_plan_id,
-                publish_at,
-                text_content,
-                status
-              ) VALUES ($1, $2, $3, $4, $5, 'generating') RETURNING *`,
-              [plan.project_id, network.id, planId, publishAt, plan.prompt],
-            );
-            postId = createResult.rows[0].id;
-            console.log(`Created new post for ${date} - ${network.name}`);
-          }
-
-          // Send to n8n webhook for generation
-          if (network.generation_webhook_url) {
-            try {
-              const webhookResponse = await fetch(
-                network.generation_webhook_url,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    post_id: postId,
-                    prompt: plan.prompt,
-                    network_name: network.name,
-                    publish_date: date,
-                    publish_time: publishTime,
-                    project_id: plan.project_id,
-                    content_plan_id: planId,
-                  }),
-                },
+            if (existingPostResult.rows.length > 0) {
+              console.log(
+                `Skipping generation for ${date} - ${network.name}: post already exists with approved/published status`,
               );
+              continue;
+            }
+            // Check for existing draft post to overwrite
+            const draftPostResult = await db.query(
+              `SELECT * FROM posts
+              WHERE content_plan_id = $1
+              AND social_network_id = $2
+              AND DATE(publish_at) = $3
+              AND status = 'draft'`,
+              [planId, network.id, date],
+            );
 
-              if (webhookResponse.ok) {
-                const webhookResult = await webhookResponse.json();
+            const publishTime = network.default_publish_time || "10:00:00";
+            const publishAt = `${date} ${publishTime}`;
 
-                // Update post with generated content
-                await db.query(
+            const webhookResponse = await fetch(
+              network.generation_webhook_url,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  prompt: plan.prompt,
+                  network_name: network.name,
+                  publish_date: date,
+                }),
+              },
+            );
+            if (!webhookResponse.ok) {
+              console.error(
+                `Webhook failed for ${network.name}: ${webhookResponse.status} ${webhookResponse.statusText}`,
+              );
+              continue;
+            }
+
+            if (webhookResponse.ok) {
+              const webhookResult = await webhookResponse.json();
+              /*
+              {
+                caption: aiOutput.caption,
+                tags: aiOutput.tags.join(' '),
+                image_url: imageUrl
+              }
+              */
+              let media_files = [];
+
+              // Download image from image_url if provided
+              if (webhookResult.image_url) {
+                try {
+                  const imageUrl = webhookResult.image_url;
+                  const response = await axios.get(imageUrl, { responseType: 'stream' });
+
+                  const timestamp = Date.now();
+                  const originalName = `generated-${timestamp}.jpg`;
+                  const filename = `${timestamp}-${originalName}`;
+                  const uploadDir = path.join(__dirname, 'data', 'uploads');
+                  const filepath = path.join(uploadDir, filename);
+
+                  // Ensure upload directory exists
+                  if (!fs.existsSync(uploadDir)) {
+                    fs.mkdirSync(uploadDir, { recursive: true });
+                  }
+
+                  // Download and save the image
+                  const writer = fs.createWriteStream(filepath);
+                  response.data.pipe(writer);
+
+                  await new Promise((resolve, reject) => {
+                    writer.on('finish', resolve);
+                    writer.on('error', reject);
+                  });
+
+                  media_files.push(filename);
+                  console.log(`Downloaded image to: ${filename}`);
+                } catch (downloadError) {
+                  console.error(`Failed to download image from ${webhookResult.image_url}:`, downloadError.message);
+                }
+              }
+
+              if (draftPostResult.rows.length > 0) {
+                // Update existing draft post
+                postId = updateResult.rows[0].id;
+                const updateResult = await db.query(
                   `UPDATE posts SET
-                   text_content = COALESCE($1, text_content),
-                   media_files = COALESCE($2, media_files),
-                   tags = COALESCE($3, tags),
-                   status = 'generated',
-                   n8n_task_id = COALESCE($4, n8n_task_id)
-                   WHERE id = $5`,
+                  text_content = $1,
+                  media_files = $2,
+                  tags = $3,
+                  status = 'generating',
+                  WHERE id = $4 RETURNING *`,
                   [
-                    webhookResult.text_content,
-                    webhookResult.media_files
-                      ? JSON.stringify(webhookResult.media_files)
-                      : null,
+                    webhookResult.caption,
+                    media_files,
                     webhookResult.tags
                       ? JSON.stringify(webhookResult.tags)
                       : null,
-                    webhookResult.n8n_task_id,
-                    postId,
+                    postId
                   ],
                 );
-                console.log(
-                  `Successfully generated content for post ${postId}`,
-                );
+                console.log(`Updated draft post for ${date} - ${network.name}`);
               } else {
-                // If webhook fails, mark post as draft again
-                await db.query(
-                  "UPDATE posts SET status = 'draft' WHERE id = $1",
-                  [postId],
+                // Create new post
+                const createResult = await db.query(
+                  `INSERT INTO posts (
+                    project_id,
+                    social_network_id,
+                    content_plan_id,
+                    publish_at,
+                    text_content,
+                    status
+                  ) VALUES ($1, $2, $3, $4, $5, 'generating') RETURNING *`,
+                  [plan.project_id, network.id, planId, publishAt, plan.prompt],
                 );
-                console.error(
-                  `Webhook failed for post ${postId}: ${webhookResponse.statusText}`,
-                );
+                console.log(`Created new post for ${date} - ${network.name}`);
               }
-            } catch (webhookError) {
-              // If webhook call fails, mark post as draft
-              await db.query(
-                "UPDATE posts SET status = 'draft' WHERE id = $1",
-                [postId],
-              );
-              console.error(
-                `Webhook call failed for post ${postId}:`,
-                webhookError.message,
-              );
-            }
+
           } else {
             // No webhook configured, just mark as generated with original prompt
-            await db.query(
-              "UPDATE posts SET status = 'generated' WHERE id = $1",
-              [postId],
-            );
             console.log(
-              `No webhook configured for ${network.name}, post ${postId} marked as generated`,
+              `No webhook configured for ${network.name}`,
             );
           }
         } catch (postError) {
@@ -482,12 +483,6 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
         }
       }
     }
-
-    // Update plan as generated
-    await db.query(
-      "UPDATE content_plans SET is_generated = TRUE WHERE id = $1",
-      [planId],
-    );
 
     res.json({
       success: true,

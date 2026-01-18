@@ -17,6 +17,8 @@
         Sparkles,
         X,
         Plus,
+        ChevronLeft,
+        ChevronRight,
     } from "@lucide/svelte";
     import { currentProject } from "$lib/stores";
     import { goto } from "$app/navigation";
@@ -26,6 +28,7 @@
     let contentPlans = $state([] as any[]);
     let isSaving = $state(false);
     let isRegenerating = $state(false);
+    let currentImageIndex = $state(0);
 
     async function fetchPost() {
         try {
@@ -213,78 +216,6 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Main Content -->
             <div class="lg:col-span-8 space-y-6">
-                <!-- Visual Content Section -->
-                <div
-                    class="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
-                >
-                    <div
-                        class="px-5 py-3 border-b border-border flex items-center justify-between bg-muted/20"
-                    >
-                        <h2
-                            class="text-xs font-bold uppercase tracking-widest flex items-center gap-2"
-                        >
-                            <ImageIcon size={14} class="text-primary" />
-                            Visual Content
-                        </h2>
-                        {#if post.status !== "published"}
-                            <button
-                                onclick={() => handleRegenerate("image")}
-                                disabled={isRegenerating}
-                                class="text-[10px] font-bold flex items-center gap-1.5 text-primary hover:bg-primary/5 px-2 py-1 rounded transition-colors disabled:opacity-50"
-                            >
-                                <Sparkles size={12} />
-                                Regenerate Images
-                            </button>
-                        {/if}
-                    </div>
-                    <div class="p-5">
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {#if post.media_files && post.media_files.length > 0}
-                                {#each post.media_files as media, i}
-                                    <div
-                                        class="group relative aspect-square rounded-lg overflow-hidden border border-border bg-muted/20 shadow-inner"
-                                    >
-                                        <img
-                                            src={media.startsWith("http")
-                                                ? media
-                                                : `/uploads/${media}`}
-                                            alt="Post content"
-                                            class="w-full h-full object-cover"
-                                        />
-                                        <div
-                                            class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
-                                        >
-                                            <button
-                                                class="bg-white/20 backdrop-blur-sm p-1.5 rounded-md hover:bg-white/30 transition-colors"
-                                            >
-                                                <RefreshCw
-                                                    size={16}
-                                                    class="text-white"
-                                                />
-                                            </button>
-                                        </div>
-                                    </div>
-                                {/each}
-                            {:else}
-                                <div
-                                    class="col-span-full aspect-[3/1] rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground bg-muted/5 p-6"
-                                >
-                                    <ImageIcon
-                                        size={32}
-                                        class="mb-2 opacity-20"
-                                    />
-                                    <p class="font-bold text-sm opacity-40">
-                                        No images generated
-                                    </p>
-                                    <p class="text-[10px] opacity-30 mt-1">
-                                        Trigger regeneration to create visuals
-                                    </p>
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Post Text Section -->
                 <div
                     class="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex flex-col"
@@ -351,6 +282,160 @@
                                 {/if}
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Visual Content Section -->
+                <div
+                    class="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
+                >
+                    <div
+                        class="flex items-center justify-between p-4 border-b border-border bg-muted/30"
+                    >
+                        <h2
+                            class="font-semibold text-sm flex items-center gap-2"
+                        >
+                            <ImageIcon size={14} class="text-primary" />
+                            Visual Content
+                        </h2>
+                        {#if post.status !== "published"}
+                            <button
+                                onclick={handleRegenerate}
+                                class="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md hover:bg-primary/20 transition-colors flex items-center gap-1"
+                            >
+                                <Sparkles size={12} />
+                                Regenerate
+                            </button>
+                        {/if}
+                    </div>
+                    <div class="p-5">
+                        {#if post.media_files && post.media_files.length > 0}
+                            {#if post.media_files.length === 1}
+                                <!-- Single image - Instagram style -->
+                                <div
+                                    class="relative aspect-[4/5] max-w-md mx-auto rounded-lg overflow-hidden border border-border bg-muted/20 shadow-inner"
+                                >
+                                    <img
+                                        src={post.media_files[0].startsWith(
+                                            "http",
+                                        )
+                                            ? post.media_files[0]
+                                            : `/uploads/${post.media_files[0]}`}
+                                        alt="Post content"
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <div
+                                        class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
+                                    >
+                                        <button
+                                            class="bg-white/20 backdrop-blur-sm p-1.5 rounded-md hover:bg-white/30 transition-colors"
+                                        >
+                                            <RefreshCw
+                                                size={16}
+                                                class="text-white"
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+                            {:else}
+                                <!-- Multiple images - Carousel -->
+                                <div
+                                    class="relative aspect-[4/5] max-w-md mx-auto rounded-lg overflow-hidden border border-border bg-muted/20 shadow-inner"
+                                >
+                                    <div class="relative h-full">
+                                        {#each post.media_files as media, i}
+                                            <div
+                                                class="absolute inset-0 transition-opacity duration-300 {currentImageIndex ===
+                                                i
+                                                    ? 'opacity-100'
+                                                    : 'opacity-0'}"
+                                            >
+                                                <img
+                                                    src={media.startsWith(
+                                                        "http",
+                                                    )
+                                                        ? media
+                                                        : `/uploads/${media}`}
+                                                    alt="Post content {i + 1}"
+                                                    class="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        {/each}
+                                    </div>
+
+                                    <!-- Carousel controls -->
+                                    {#if post.media_files.length > 1}
+                                        <!-- Previous button -->
+                                        <button
+                                            onclick={() =>
+                                                (currentImageIndex =
+                                                    (currentImageIndex -
+                                                        1 +
+                                                        post.media_files
+                                                            .length) %
+                                                    post.media_files.length)}
+                                            class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </button>
+
+                                        <!-- Next button -->
+                                        <button
+                                            onclick={() =>
+                                                (currentImageIndex =
+                                                    (currentImageIndex + 1) %
+                                                    post.media_files.length)}
+                                            class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </button>
+
+                                        <!-- Image indicators -->
+                                        <div
+                                            class="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-1.5"
+                                        >
+                                            {#each post.media_files as _, i}
+                                                <button
+                                                    onclick={() =>
+                                                        (currentImageIndex = i)}
+                                                    class="w-2 h-2 rounded-full transition-colors {currentImageIndex ===
+                                                    i
+                                                        ? 'bg-white'
+                                                        : 'bg-white/50'}"
+                                                />
+                                            {/each}
+                                        </div>
+                                    {/if}
+
+                                    <!-- Hover overlay -->
+                                    <div
+                                        class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
+                                    >
+                                        <button
+                                            class="bg-white/20 backdrop-blur-sm p-1.5 rounded-md hover:bg-white/30 transition-colors"
+                                        >
+                                            <RefreshCw
+                                                size={16}
+                                                class="text-white"
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+                            {/if}
+                        {:else}
+                            <!-- No images placeholder -->
+                            <div
+                                class="aspect-[4/5] max-w-md mx-auto rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground bg-muted/5 p-6"
+                            >
+                                <ImageIcon size={32} class="mb-2 opacity-20" />
+                                <p class="font-bold text-sm opacity-40">
+                                    No images generated
+                                </p>
+                                <p class="text-[10px] opacity-30 mt-1">
+                                    Trigger regeneration to create visuals
+                                </p>
+                            </div>
+                        {/if}
                     </div>
                 </div>
             </div>
