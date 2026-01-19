@@ -488,10 +488,7 @@
                                 <option value={null}>None</option>
                                 {#each contentPlans as cp}
                                     <option value={cp.id}>
-                                        {new Date(
-                                            cp.start_date,
-                                        ).toLocaleDateString()} - {cp.name ||
-                                            "Untitled"}
+                                        {cp.name || "Untitled"}
                                     </option>
                                 {/each}
                             </select>

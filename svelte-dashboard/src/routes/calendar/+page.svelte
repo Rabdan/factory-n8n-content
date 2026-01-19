@@ -344,7 +344,6 @@
             if (res.ok) {
                 const plan = await res.json();
                 await fetchContentPlans();
-                showPlanModal = false;
                 selectedDates = [];
 
                 if (startGenerate) {
@@ -353,12 +352,14 @@
             }
         } catch (err) {
             console.error("Error creating plan:", err);
+        } finally {
+            showPlanModal = false;
         }
     }
 
     async function generatePlanContent(planId: number) {
         isPlanGenerating = true;
-        planGenerationStatus = `Generating content for plan ${planId}...`;
+        planGenerationStatus = `Generating content... This can take a minute.`;
         try {
             const res = await fetch(
                 `/api/projects/content-plans/${planId}/generate`,
@@ -366,12 +367,18 @@
                     method: "POST",
                 },
             );
-            if (res.ok) {
-                await fetchContentPlans();
-                await fetchPosts();
+            const result = await res.json();
+            if (!res.ok) {
+                throw new Error(result.error || "Failed to generate content.");
             }
+
+            alert(
+                `Successfully generated ${result.total_generated || 0} posts.`,
+            );
+            await fetchContentPlans();
+            await fetchPosts();
         } catch (err) {
-            console.error("Generation error:", err);
+            alert(err.message);
         } finally {
             isPlanGenerating = false;
         }
@@ -494,35 +501,12 @@
     let genError = $state("");
 
     async function handleAutogenerate() {
-        if (genData.selectedNetworks.length === 0 || !genData.prompt) {
-            genError =
-                "Please select at least one network and provide a prompt.";
-            return;
-        }
-
-        genError = "";
         isGenerating = true;
+        genError = "";
         progress = 0;
-        genStatus = "Analyzing prompt...";
+        genStatus = "Contacting AI, this may take a moment...";
 
         try {
-            const steps = [
-                { p: 10, s: "Analyzing prompt..." },
-                { p: 30, s: "Generating content ideas..." },
-                { p: 50, s: "Creating visual assets..." },
-                { p: 70, s: "Scheduling posts..." },
-                { p: 90, s: "Finalizing..." },
-                { p: 100, s: "Done!" },
-            ];
-
-            // Simulate progress for UI demonstration
-            for (const step of steps) {
-                await new Promise((r) => setTimeout(r, 600));
-                progress = step.p;
-                genStatus = step.s;
-            }
-
-            // Send to backend
             const res = await fetch(
                 `/api/projects/${$currentProject.id}/bulk-generate`,
                 {
@@ -539,21 +523,22 @@
 
             if (!res.ok) {
                 const errorData = await res.json();
-                throw new Error(errorData.error || "Generation failed");
+                throw new Error(
+                    errorData.error || "An unknown error occurred.",
+                );
             }
 
+            const result = await res.json();
+            alert(
+                `Generated ${result.total_generated || 0} posts successfully.`,
+            );
+
             await fetchPosts();
-            setTimeout(() => {
-                showGenModal = false;
-                isGenerating = false;
-                genError = "";
-            }, 500);
+            showGenModal = false;
         } catch (err) {
-            console.error("Autogeneration error:", err);
-            genError =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to generate content. Please try again.";
+            alert(err.message);
+            showGenModal = false;
+        } finally {
             isGenerating = false;
         }
     }
@@ -1077,13 +1062,27 @@
     <!-- Modal Overlay -->
     <div
         class="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] flex items-center justify-center p-4"
-        class:pointer-events-none={isPlanGenerating}
     >
         <div
-            class="bg-card border w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border-t-4"
+            class="relative bg-card border w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border-t-4"
             style="border-top-color: {newPlan.color}"
-            class:opacity-50={isPlanGenerating}
         >
+            {#if isPlanGenerating}
+                <div
+                    class="absolute inset-0 bg-card/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl z-20"
+                >
+                    <div class="relative mb-4">
+                        <div
+                            class="w-12 h-12 border-4 border-primary rounded-full"
+                        />
+                        <div
+                            class="absolute top-0 left-0 w-12 h-12 border-4 border-transparent border-t-white rounded-full animate-spin"
+                        />
+                    </div>
+                    <p class="font-medium">{planGenerationStatus}</p>
+                </div>
+            {/if}
+
             <!-- Modal Header -->
             <div
                 class="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/50"
@@ -1104,8 +1103,7 @@
                 <button
                     onclick={() => !isPlanGenerating && (showPlanModal = false)}
                     class="p-1.5 hover:bg-muted rounded transition-colors"
-                    class:opacity-50={isPlanGenerating}
-                    class:pointer-events-none={isPlanGenerating}
+                    disabled={isPlanGenerating}
                 >
                     <X size={18} />
                 </button>
@@ -1126,6 +1124,7 @@
                                 placeholder="Campaign title..."
                                 class="w-full bg-background border border-input rounded-md px-3 py-2 text-sm font-bold focus:ring-2 transition-all outline-none"
                                 style="--tw-ring-color: {newPlan.color}40"
+                                disabled={isPlanGenerating}
                             />
                         </div>
 
@@ -1138,8 +1137,7 @@
                                 <button
                                     onclick={() => (showDatePicker = true)}
                                     class="text-xs px-2 py-1 bg-primary text-white rounded hover:brightness-110"
-                                    class:opacity-50={isPlanGenerating}
-                                    class:pointer-events-none={isPlanGenerating}
+                                    disabled={isPlanGenerating}
                                 >
                                     + Add
                                 </button>
@@ -1170,8 +1168,7 @@
                                         <button
                                             onclick={() => removePlanDate(dStr)}
                                             class="text-muted-foreground hover:text-destructive transition-colors"
-                                            class:opacity-50={isPlanGenerating}
-                                            class:pointer-events-none={isPlanGenerating}
+                                            disabled={isPlanGenerating}
                                         >
                                             <X size={12} />
                                         </button>
@@ -1234,6 +1231,7 @@
                                                         updatePlanPrompt();
                                                     }}
                                                     class="flex items-center gap-2"
+                                                    disabled={isPlanGenerating}
                                                 >
                                                     <div
                                                         class="w-6 h-6 rounded {getNetworkColor(
@@ -1269,8 +1267,7 @@
                                                                 e.target.value,
                                                             )}
                                                         class="text-xs px-2 py-1 rounded border border-border bg-background"
-                                                        class:opacity-50={isPlanGenerating}
-                                                        class:pointer-events-none={isPlanGenerating}
+                                                        disabled={isPlanGenerating}
                                                     />
                                                 {/if}
                                             </div>
@@ -1294,6 +1291,7 @@
                             placeholder="Provide detailed instructions for AI generation for each platform..."
                             class="flex-1 w-full min-h-[400px] bg-background border border-input rounded-md p-4 text-sm font-medium focus:ring-2 transition-all outline-none resize-none shadow-inner leading-relaxed"
                             style="--tw-ring-color: {newPlan.color}40"
+                            disabled={isPlanGenerating}
                         ></textarea>
                     </div>
                 </div>
@@ -1306,8 +1304,7 @@
                 <button
                     onclick={() => !isPlanGenerating && (showPlanModal = false)}
                     class="px-4 py-2 rounded-md font-bold text-sm hover:bg-muted transition-colors border border-gray-800 dark:border-gray-300"
-                    class:opacity-50={isPlanGenerating}
-                    class:pointer-events-none={isPlanGenerating}
+                    disabled={isPlanGenerating}
                 >
                     Cancel
                 </button>
@@ -1315,8 +1312,7 @@
                     onclick={() => !isPlanGenerating && handleCreatePlan(false)}
                     class="px-4 py-2 border rounded-md font-bold text-sm transition-all"
                     style="border-color: {newPlan.color}; color: {newPlan.color}; background-color: transparent"
-                    class:opacity-50={isPlanGenerating}
-                    class:pointer-events-none={isPlanGenerating}
+                    disabled={isPlanGenerating}
                 >
                     Save Campaign
                 </button>
@@ -1325,8 +1321,7 @@
                         onclick={() =>
                             !isPlanGenerating && handleCreatePlan(true)}
                         class="px-5 py-2 text-white rounded-md font-bold text-sm shadow transition-all hover:brightness-110 active:scale-95"
-                        class:opacity-50={isPlanGenerating}
-                        class:pointer-events-none={isPlanGenerating}
+                        disabled={isPlanGenerating}
                         style="background-color: {newPlan.color}"
                     >
                         Bulk Generation
