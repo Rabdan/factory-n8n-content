@@ -285,6 +285,7 @@
             })) || [];
         newPlan.prompt = "";
         newPlan.create = "new";
+        updatePlanPrompt();
         showPlanModal = true;
     }
 
