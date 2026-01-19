@@ -312,16 +312,16 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
     if (planResult.rows.length === 0) {
       return res.status(404).json({ error: "Plan not found" });
     }
-
+    console.log(planResult.rows[0]);
     const plan = planResult.rows[0];
-    const dates = JSON.parse(plan.dates || "[]");
-    const platforms = JSON.parse(plan.platforms || "[]");
-    const prompt = JSON.parse(plan.prompt || "");
+    const dates = plan.dates || [];
+    const platforms = plan.platforms || [];
+    const platformIds = platforms.map((p) => p.id);
 
     // Get social networks for platforms
     const networksResult = await db.query(
       "SELECT * FROM social_networks WHERE id = ANY($1) AND project_id = $2",
-      [platforms, plan.project_id],
+      [platformIds, plan.project_id],
     );
 
     const networks = networksResult.rows;
@@ -336,150 +336,160 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
       `Starting generation for plan ${planId}: ${dates.length} dates x ${networks.length} networks`,
     );
 
+    let totalGenerated = 0;
+
     // Generate content for each date and network combination
     for (const date of dates) {
       for (const network of networks) {
         if (network.generation_webhook_url) {
-          try {
-            // Check if post already exists for this date and network
-            const existingPostResult = await db.query(
-              `SELECT * FROM posts
-              WHERE content_plan_id = $1
-              AND social_network_id = $2
-              AND DATE(publish_at) = $3
-              AND status IN ('approved', 'published')`,
-              [planId, network.id, date],
-            );
+          // Check if post already exists for this date and network
+          const existingPostResult = await db.query(
+            `SELECT * FROM posts
+            WHERE content_plan_id = $1
+            AND social_network_id = $2
+            AND DATE(publish_at) = $3
+            AND status IN ('approved', 'published')`,
+            [planId, network.id, date],
+          );
 
-            if (existingPostResult.rows.length > 0) {
-              console.log(
-                `Skipping generation for ${date} - ${network.name}: post already exists with approved/published status`,
-              );
-              continue;
-            }
-            // Check for existing draft post to overwrite
-            const draftPostResult = await db.query(
-              `SELECT * FROM posts
-              WHERE content_plan_id = $1
-              AND social_network_id = $2
-              AND DATE(publish_at) = $3
-              AND status = 'draft'`,
-              [planId, network.id, date],
-            );
-
-            const publishTime = network.default_publish_time || "10:00:00";
-            const publishAt = `${date} ${publishTime}`;
-
-            const webhookResponse = await fetch(
-              network.generation_webhook_url,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  prompt: plan.prompt,
-                  network_name: network.name,
-                  publish_date: date,
-                }),
-              },
-            );
-            if (!webhookResponse.ok) {
-              console.error(
-                `Webhook failed for ${network.name}: ${webhookResponse.status} ${webhookResponse.statusText}`,
-              );
-              continue;
-            }
-
-            if (webhookResponse.ok) {
-              const webhookResult = await webhookResponse.json();
-              /*
-              {
-                caption: aiOutput.caption,
-                tags: aiOutput.tags.join(' '),
-                image_url: imageUrl
-              }
-              */
-              let media_files = [];
-
-              // Download image from image_url if provided
-              if (webhookResult.image_url) {
-                try {
-                  const imageUrl = webhookResult.image_url;
-                  const response = await axios.get(imageUrl, { responseType: 'stream' });
-
-                  const timestamp = Date.now();
-                  const originalName = `generated-${timestamp}.jpg`;
-                  const filename = `${timestamp}-${originalName}`;
-                  const uploadDir = path.join(__dirname, 'data', 'uploads');
-                  const filepath = path.join(uploadDir, filename);
-
-                  // Ensure upload directory exists
-                  if (!fs.existsSync(uploadDir)) {
-                    fs.mkdirSync(uploadDir, { recursive: true });
-                  }
-
-                  // Download and save the image
-                  const writer = fs.createWriteStream(filepath);
-                  response.data.pipe(writer);
-
-                  await new Promise((resolve, reject) => {
-                    writer.on('finish', resolve);
-                    writer.on('error', reject);
-                  });
-
-                  media_files.push(filename);
-                  console.log(`Downloaded image to: ${filename}`);
-                } catch (downloadError) {
-                  console.error(`Failed to download image from ${webhookResult.image_url}:`, downloadError.message);
-                }
-              }
-
-              if (draftPostResult.rows.length > 0) {
-                // Update existing draft post
-                postId = updateResult.rows[0].id;
-                const updateResult = await db.query(
-                  `UPDATE posts SET
-                  text_content = $1,
-                  media_files = $2,
-                  tags = $3,
-                  status = 'generating',
-                  WHERE id = $4 RETURNING *`,
-                  [
-                    webhookResult.caption,
-                    media_files,
-                    webhookResult.tags
-                      ? JSON.stringify(webhookResult.tags)
-                      : null,
-                    postId
-                  ],
-                );
-                console.log(`Updated draft post for ${date} - ${network.name}`);
-              } else {
-                // Create new post
-                const createResult = await db.query(
-                  `INSERT INTO posts (
-                    project_id,
-                    social_network_id,
-                    content_plan_id,
-                    publish_at,
-                    text_content,
-                    status
-                  ) VALUES ($1, $2, $3, $4, $5, 'generating') RETURNING *`,
-                  [plan.project_id, network.id, planId, publishAt, plan.prompt],
-                );
-                console.log(`Created new post for ${date} - ${network.name}`);
-              }
-
-          } else {
-            // No webhook configured, just mark as generated with original prompt
+          if (existingPostResult.rows.length > 0) {
             console.log(
-              `No webhook configured for ${network.name}`,
+              `Skipping generation for ${date} - ${network.name}: post already exists with approved/published status`,
+            );
+            continue;
+          }
+
+          // Check for existing draft post to overwrite
+          const draftPostResult = await db.query(
+            `SELECT * FROM posts
+            WHERE content_plan_id = $1
+            AND social_network_id = $2
+            AND DATE(publish_at) = $3
+            AND status = 'draft'`,
+            [planId, network.id, date],
+          );
+
+          const publishTime =
+            network.default_publish_time ||
+            platformConfig?.publishTime ||
+            "10:00:00";
+          const publishAt = new Date(`${date}T${publishTime}`);
+
+          // Call webhook to generate content
+          const webhookResponse = await fetch(network.generation_webhook_url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: plan.prompt,
+              network_name: network.name,
+              publish_date: date,
+            }),
+          });
+
+          if (!webhookResponse.ok) {
+            throw new Error(
+              `Webhook failed for ${network.name}: ${webhookResponse.status} ${webhookResponse.statusText}`,
             );
           }
-        } catch (postError) {
-          console.error(
-            `Error generating post for ${date} - ${network.name}:`,
-            postError.message,
-          );
+
+          const webhookResult = await webhookResponse.json();
+          console.log(`Webhook response for ${network.name}:`, webhookResult);
+
+          let mediaFiles = [];
+
+          // Download image from image_url if provided
+          if (webhookResult[0].image_url) {
+            const imageUrl = webhookResult[0].image_url;
+            const response = await axios.get(imageUrl, {
+              responseType: "stream",
+            });
+
+            const timestamp = Date.now();
+            const filename = `${timestamp}-generated.jpg`;
+            const uploadDir = path.join(__dirname, "..", "data", "uploads");
+            const filepath = path.join(uploadDir, filename);
+
+            // Ensure upload directory exists
+            if (!fs.existsSync(uploadDir)) {
+              fs.mkdirSync(uploadDir, { recursive: true });
+            }
+
+            // Download and save the image
+            const writer = fs.createWriteStream(filepath);
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+              writer.on("finish", resolve);
+              writer.on("error", reject);
+            });
+
+            mediaFiles.push(filename);
+            console.log(`Downloaded image to: ${filename}`);
+          }
+
+          let postId;
+          if (draftPostResult.rows.length > 0) {
+            // Update existing draft post
+            postId = draftPostResult.rows[0].id;
+            const updateResult = await db.query(
+              `UPDATE posts SET
+              text_content = $1,
+              media_files = $2,
+              tags = $3,
+              status = 'generated'
+              WHERE id = $4 RETURNING *`,
+              [
+                webhookResult[0].caption ||
+                  webhookResult[0].text_content ||
+                  plan.prompt,
+                mediaFiles.length > 0 ? JSON.stringify(mediaFiles) : null,
+                webhookResult[0].tags
+                  ? JSON.stringify(webhookResult[0].tags)
+                  : null,
+                postId,
+              ],
+            );
+            console.log(
+              `Updated draft post for ${network.name}`,
+              updateResult.rows[0],
+            );
+          } else {
+            // Create new post
+            const createResult = await db.query(
+              `INSERT INTO posts (
+                project_id,
+                social_network_id,
+                content_plan_id,
+                publish_at,
+                text_content,
+                media_files,
+                tags,
+                status
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'generated') RETURNING *`,
+              [
+                plan.project_id,
+                network.id,
+                planId,
+                publishAt,
+                webhookResult[0].caption ||
+                  webhookResult[0].text_content ||
+                  plan.prompt,
+                mediaFiles.length > 0 ? JSON.stringify(mediaFiles) : null,
+                webhookResult[0].tags
+                  ? JSON.stringify(webhookResult[0].tags)
+                  : null,
+              ],
+            );
+            postId = createResult.rows[0].id;
+            console.log(
+              `Created new post for ${network.name}`,
+              createResult.rows[0],
+            );
+          }
+
+          totalGenerated++;
+        } else {
+          console.log(`No webhook configured for ${network.name}`);
         }
       }
     }
@@ -489,6 +499,7 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
       message: `Generation completed for plan ${planId}`,
       generated_dates: dates.length,
       networks: networks.length,
+      total_generated: totalGenerated,
     });
   } catch (err) {
     console.error("Generation failed:", err);
