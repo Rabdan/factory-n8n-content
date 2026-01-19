@@ -359,13 +359,13 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
             continue;
           }
 
-          // Check for existing draft post to overwrite
-          const draftPostResult = await db.query(
-            `SELECT * FROM posts
+          // Delete posts without status ('approved', 'published')
+          await db.query(
+            `DELETE FROM posts
             WHERE content_plan_id = $1
             AND social_network_id = $2
             AND DATE(publish_at) = $3
-            AND status = 'draft'`,
+            AND status NOT IN ('approved', 'published')`,
             [planId, network.id, date],
           );
 
@@ -427,36 +427,9 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
             console.log(`Downloaded image to: ${filename}`);
           }
 
-          let postId;
-          if (draftPostResult.rows.length > 0) {
-            // Update existing draft post
-            postId = draftPostResult.rows[0].id;
-            const updateResult = await db.query(
-              `UPDATE posts SET
-              text_content = $1,
-              media_files = $2,
-              tags = $3,
-              status = 'generated'
-              WHERE id = $4 RETURNING *`,
-              [
-                webhookResult[0].caption ||
-                  webhookResult[0].text_content ||
-                  plan.prompt,
-                mediaFiles.length > 0 ? JSON.stringify(mediaFiles) : null,
-                webhookResult[0].tags
-                  ? JSON.stringify(webhookResult[0].tags)
-                  : null,
-                postId,
-              ],
-            );
-            console.log(
-              `Updated draft post for ${network.name}`,
-              updateResult.rows[0],
-            );
-          } else {
-            // Create new post
-            const createResult = await db.query(
-              `INSERT INTO posts (
+          // Create new post
+          const createResult = await db.query(
+            `INSERT INTO posts (
                 project_id,
                 social_network_id,
                 content_plan_id,
@@ -466,26 +439,24 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
                 tags,
                 status
               ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'generated') RETURNING *`,
-              [
-                plan.project_id,
-                network.id,
-                planId,
-                publishAt,
-                webhookResult[0].caption ||
-                  webhookResult[0].text_content ||
-                  plan.prompt,
-                mediaFiles.length > 0 ? JSON.stringify(mediaFiles) : null,
-                webhookResult[0].tags
-                  ? JSON.stringify(webhookResult[0].tags)
-                  : null,
-              ],
-            );
-            postId = createResult.rows[0].id;
-            console.log(
-              `Created new post for ${network.name}`,
-              createResult.rows[0],
-            );
-          }
+            [
+              plan.project_id,
+              network.id,
+              planId,
+              publishAt,
+              webhookResult[0].caption ||
+                webhookResult[0].text_content ||
+                plan.prompt,
+              mediaFiles.length > 0 ? JSON.stringify(mediaFiles) : null,
+              webhookResult[0].tags
+                ? JSON.stringify(webhookResult[0].tags)
+                : null,
+            ],
+          );
+          console.log(
+            `Created new post for ${network.name}`,
+            createResult.rows[0],
+          );
 
           totalGenerated++;
         } else {

@@ -16,6 +16,7 @@
     import { onMount } from "svelte";
     import { toDateKey } from "$lib/utils/date";
     import DatePicker from "$lib/components/DatePicker.svelte";
+    import AlertDialog from "$lib/components/AlertDialog.svelte";
     import { currentProject } from "$lib/stores";
     import { goto } from "$app/navigation";
 
@@ -307,15 +308,19 @@
 
     async function handleCreatePlan(startGenerate = false) {
         if (!newPlan.prompt || newPlan.platforms.length === 0) {
-            alert(
+            showAlert(
+                "Validation Error",
                 "Fill prompt, select at least one network, and choose dates.",
+                "destructive",
             );
             return;
         }
 
         if (newPlan.dates.length === 0 && newPlan.create === "new") {
-            alert(
+            showAlert(
+                "Validation Error",
                 "Fill prompt, select at least one network, and choose dates.",
+                "destructive",
             );
             return;
         }
@@ -373,13 +378,21 @@
                 throw new Error(result.error || "Failed to generate content.");
             }
 
-            alert(
+            showAlert(
+                "Success",
                 `Successfully generated ${result.total_generated || 0} posts.`,
+                "default",
             );
             await fetchContentPlans();
             await fetchPosts();
         } catch (err) {
-            alert(err.message);
+            showAlert(
+                "Error",
+                err instanceof Error
+                    ? err.message
+                    : "An unknown error occurred",
+                "destructive",
+            );
         } finally {
             isPlanGenerating = false;
         }
@@ -501,6 +514,27 @@
 
     let genError = $state("");
 
+    // AlertDialog state
+    let alertDialogOpen = $state(false);
+    let alertDialogTitle = $state("");
+    let alertDialogDescription = $state("");
+    let alertDialogConfirmText = $state("OK");
+    let alertDialogVariant = $state("default" as "default" | "destructive");
+    let alertDialogCallback = $state<(() => void) | null>(null);
+
+    function showAlert(
+        title: string,
+        description: string,
+        variant: "default" | "destructive" = "default",
+        callback?: () => void,
+    ) {
+        alertDialogTitle = title;
+        alertDialogDescription = description;
+        alertDialogVariant = variant;
+        alertDialogCallback = callback || null;
+        alertDialogOpen = true;
+    }
+
     async function handleAutogenerate() {
         isGenerating = true;
         genError = "";
@@ -530,14 +564,22 @@
             }
 
             const result = await res.json();
-            alert(
+            showAlert(
+                "Success",
                 `Generated ${result.total_generated || 0} posts successfully.`,
+                "default",
             );
 
             await fetchPosts();
             showGenModal = false;
         } catch (err) {
-            alert(err.message);
+            showAlert(
+                "Error",
+                err instanceof Error
+                    ? err.message
+                    : "An unknown error occurred",
+                "destructive",
+            );
             showGenModal = false;
         } finally {
             isGenerating = false;
@@ -1499,6 +1541,16 @@
         </div>
     </div>
 {/if}
+
+<!-- AlertDialog Component -->
+<AlertDialog
+    bind:open={alertDialogOpen}
+    title={alertDialogTitle}
+    description={alertDialogDescription}
+    confirmText={alertDialogConfirmText}
+    variant={alertDialogVariant}
+    onConfirm={() => alertDialogCallback?.()}
+/>
 
 <style>
     :global(.line-clamp-2) {
