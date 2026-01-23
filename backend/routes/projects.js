@@ -375,12 +375,17 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
             "10:00:00";
           const publishAt = new Date(`${date}T${publishTime}`);
 
+          const sheader = `[${network.name} Settings]`;
+          const escapedHeader = sheader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`${escapedHeader}\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'i');
+          const match = plan.prompt.match(regex);
+          const textprompt match ? match[1].trim() : "create a simple post";
           // Call webhook to generate content
           const webhookResponse = await fetch(network.generation_webhook_url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              prompt: plan.prompt,
+              prompt: const,
               network_name: network.name,
               publish_date: date,
             }),

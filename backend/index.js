@@ -11,6 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 3060;
 
 const logger = require("./utils/logger");
+const postScheduler = require("./utils/postScheduler");
 
 // Middleware and Upload Config
 const dataDir = path.resolve(__dirname, "data");
@@ -56,10 +57,12 @@ const upload = multer({ storage: storage });
 const projectsRouter = require("./routes/projects");
 const postsRouter = require("./routes/posts");
 const authRouter = require("./routes/auth");
+const schedulerRouter = require("./routes/scheduler");
 
 app.use("/api/auth", authRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/posts", postsRouter);
+app.use("/api/scheduler", schedulerRouter);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -120,4 +123,20 @@ app.post(
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  
+  // Запуск планировщика публикаций
+  postScheduler.start();
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  postScheduler.stop();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  postScheduler.stop();
+  process.exit(0);
 });

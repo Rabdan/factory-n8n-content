@@ -72,10 +72,21 @@ CREATE TABLE IF NOT EXISTS posts (
     text_content TEXT,
     media_files JSONB, -- Array of file paths or objects
     tags JSONB DEFAULT '[]'::jsonb, -- Array of strings
-    status VARCHAR(50) DEFAULT 'draft', -- draft, generated, approved, published, rejected
+    status VARCHAR(50) DEFAULT 'draft', -- draft, generated, approved, published, rejected, failed
     n8n_task_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP,
+    publish_attempts INTEGER DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create index for faster search of posts to publish
+CREATE INDEX IF NOT EXISTS idx_posts_publish_at_status
+ON posts (publish_at, status)
+WHERE status IN ('approved', 'published', 'failed');
+
+-- Create index for faster search of posts by project
+CREATE INDEX IF NOT EXISTS idx_posts_project_id
+ON posts (project_id);
 
 -- Files (RAG/Uploads)
 CREATE TABLE IF NOT EXISTS uploads (
@@ -91,7 +102,7 @@ CREATE TABLE IF NOT EXISTS uploads (
 -- Seed Data
 -- Passwords are 'Admin123!' (hash generated via bcryptjs with 8 rounds)
 INSERT INTO users (email, password_hash)
-VALUES 
+VALUES
 ('admin', '$2b$10$rZ7vXlbhcaw2HFe4XrPvnuVUhy/HuwI5rCYozUQN97pSjm/ct0ZUu'),
 ('admin2', '$2b$10$rZ7vXlbhcaw2HFe4XrPvnuVUhy/HuwI5rCYozUQN97pSjm/ct0ZUu')
 ON CONFLICT (email) DO NOTHING;
@@ -99,14 +110,14 @@ ON CONFLICT (email) DO NOTHING;
 -- Since we can't reliably know the IDs if they already exist, we rely on 1 and 2 for a fresh DB
 -- Otherwise in a real scenario we'd use subqueries or DO blocks
 INSERT INTO projects (name, owner_id, settings)
-VALUES 
+VALUES
 ('NeuroVision', 1, '{}'),
 ('test My networks', 1, '{}')
 ON CONFLICT DO NOTHING;
 
 -- Add admin and admin2 to project members
 INSERT INTO project_members (project_id, user_id, role)
-VALUES 
+VALUES
 (1, 1, 'Owner'),
 (2, 1, 'Owner'),
 (1, 2, 'Owner'),
