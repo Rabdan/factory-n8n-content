@@ -65,3 +65,23 @@ docker-compose up -d --build
 ## Configuration
 
 Environment variables and default settings can be configured in the `docker-compose.yml` file and individual service configuration files.
+
+## n8n Workflow Setup
+
+To enable AI-powered social post generation, follow these steps:
+
+1. **Import the Workflow**  
+   In your n8n instance, import the workflow file located at:  
+   `n8n-workflows/Generate Post Social.json`
+
+2. **Set Your OpenRouter API Key**  
+   The workflow requires an OpenRouter API key for AI model access.  
+   - In n8n, go to *Credentials* and add your OpenRouter API key as required by the workflow.
+
+3. **Configure Paid Models (Optional)**  
+   If you want to use paid models, edit the workflow:
+   - Open the imported workflow in n8n.
+   - Locate the node named **Prepare** (with the prompt array).
+   - Add the desired paid model names to the array as needed.
+
+Be sure to save and activate the workflow after making these changes.

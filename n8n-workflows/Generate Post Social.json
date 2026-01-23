@@ -1,0 +1,280 @@
+{
+  "name": "Generate Post Social",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "86437e2e-c4e3-4215-bc2a-9f5cdce68909",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "var res = `clarification: `;\nres = res + $input.first().json.body.prompt + ' for '+$input.first().json.body.network_name + ' at ' + $input.first().json.body.publish_date;\nconst syst=`Role: You are a social media content creator for NeuroVision Therapy Clinic, a vision therapy practice specializing in concussion recovery and learning-related vision problems. Brand Voice: Professional, empathetic, evidence-based, hopeful. Return JSON:\n{\n\"caption\": \"Post text\",\n\"tags\": [\"tag1\", \"tag2\"],\n\"image_query\": \"detailed_description_of_image_without_spaces\"\n}\nImportant: Use English in the image_query, replace spaces with %20 or underscores. Do not use special characters.`;\nreturn {\n  prompt: res,\n  systemPrompt: syst,\n  models: [\n    \"deepseek/deepseek-r1-0528:free\",\n    \"meta-llama/llama-3.2-3b-instruct:free\",\n    \"google/gemma-3-12b-it:free\",\n    \"mistralai/devstral-2512:free\"\n  ],\n  attempt: 0\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -64
+      ],
+      "id": "81106ea3-69c2-47a0-9989-32117e6ad497",
+      "name": "prepare Prompt"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-post",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -592,
+        -64
+      ],
+      "id": "5582c27d-ed3c-4209-8373-092691014cb9",
+      "name": "Webhook",
+      "webhookId": "c189b041-1f98-47c4-89de-1e5bc02685aa"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $('Basic LLM Chain').first().json.text\nlet data;\ntry {\n  data = typeof aiOutput === 'string' ? JSON.parse(aiOutput) : aiOutput;\n} catch (e) {\n  const jsonMatch = aiOutput.match(/\\{[\\s\\S]*\\}/);\n  data = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: \"Failed to parse AI output\" };\n}\n\nconst cleanQuery = data.image_query.trim().replace(/\\s+/g, '_');\nconst imageUrl = `https://image.pollinations.ai/prompt/${cleanQuery}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;\n\nreturn {\n  caption: data.caption,\n  tags: data.tags,\n  image_url: imageUrl,\n  status: \"success\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -64
+      ],
+      "id": "63e2563c-af75-4c8a-8933-cf123da90f07",
+      "name": "prepare output"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        624,
+        112
+      ],
+      "id": "62015d3c-8e22-4362-91a4-4adfba1bbe74",
+      "name": "Respond Error"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('prepare Prompt').first().json.prompt }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "={{ $('prepare Prompt').first().json.systemPrompt }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -240,
+        -64
+      ],
+      "id": "589584ab-8c38-41a2-af09-3a121aa51950",
+      "name": "Basic LLM Chain",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const models = $('prepare Prompt').first().json.models;\n\nlet lastAttempt = 0;\ntry {\n  lastAttempt = $('Code getModel').last().json.attempt;\n} catch (e) {\n  lastAttempt = 0;\n}\n\nlet newAttempt = lastAttempt + 1;\n\n// 3. Проверяем, не вышли ли за пределы списка моделей\nif (newAttempt < models.length) {\n    return { \n      attempt: newAttempt, \n      retry: true,\n      next_model: models[newAttempt] \n    };\n} else {\n    return { \n      attempt: 0, \n      retry: false,\n      next_model: models[0] \n    };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        32
+      ],
+      "id": "dc67aadd-8f88-4ace-9eac-41dc58b2f205",
+      "name": "Code getModel"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "626a7293-9f57-4909-8b69-99b2343f544c",
+              "leftValue": "={{ $('Code getModel').first().json.retry }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        176,
+        32
+      ],
+      "id": "8743f1d3-2a6d-46ba-aafe-0a648d5d81ec",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "model": "={{ $if($(\"Code getModel\").isExecuted, $(\"Code getModel\").last().json.next_model, $('prepare Prompt').first().json.models[0]) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        112
+      ],
+      "id": "3a38dd1d-4f3e-4c48-946d-24f1582ed366",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "jt7bCtnP0FzcVfFa",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "prepare Prompt": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "prepare Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare output": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "prepare output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code getModel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code getModel": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "7fb4c0a0-0840-45b0-9d87-a04da6845ec1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2a4496c82c54a45e705e73ca30cf4f75738a05666485c6f3c9dd182ac49eec1a"
+  },
+  "id": "J6NG2VkH9yaPUFuz",
+  "tags": []
+}
