@@ -1,0 +1,135 @@
+{
+  "name": "Publish Facebook image post",
+  "nodes": [
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v23.0",
+        "node": "={{ $vars.FB_PAGE_ID }}/photos",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        160,
+        16
+      ],
+      "id": "29565ac2-d027-461c-b18b-8b3d8a8c5333",
+      "name": "Facebook Graph API",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "publish-facebook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        16
+      ],
+      "id": "5cdbd69a-eead-4730-b9da-6b10674f5f2a",
+      "name": "Webhook",
+      "webhookId": "fe20a90d-d50d-47e4-9a65-c1e73bc1e7cc"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body;\nconst text = body.textContent || '';\nconst tags = Array.isArray(body.tags) ? body.tags.map(t => '#' + t).join(' ') : '';\nconst imageUrl = Array.isArray(body.mediafiles) ? body.mediafiles[0] : body.mediafiles;\nreturn {\n  message: text + (tags ? '\\\\n\\\\n' + tags : ''),\n  url: imageUrl\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        16
+      ],
+      "id": "7b8bdecb-8b26-4811-9d73-11ad21eac1c5",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        368,
+        96
+      ],
+      "id": "9133c3c2-1cc7-4782-b5a2-7d48860701d9",
+      "name": "Respond Error"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        368,
+        -80
+      ],
+      "id": "0fdaad92-d8b8-4274-a55a-98607ace3330",
+      "name": "Respond OK"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Facebook Graph API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook Graph API": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6b4b7972-7263-482e-8749-2f12e6784870",
+  "meta": {
+    "instanceId": "2a4496c82c54a45e705e73ca30cf4f75738a05666485c6f3c9dd182ac49eec1a"
+  },
+  "id": "UxjfDGpdRl2Wzd8X",
+  "tags": []
+}

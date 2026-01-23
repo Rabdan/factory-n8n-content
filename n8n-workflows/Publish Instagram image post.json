@@ -1,0 +1,139 @@
+{
+  "name": "Publish Instagram image post",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "publish-instagram",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "e9da4a4a-2b15-41dc-8904-aaf39a4c5af1",
+      "name": "Webhook",
+      "webhookId": "7b774fe9-789b-47d9-9ebc-cc1f8e27b0fb"
+    },
+    {
+      "parameters": {
+        "resource": "image"
+      },
+      "type": "@mookielianhd/n8n-nodes-instagram.instagram",
+      "typeVersion": 1,
+      "position": [
+        176,
+        0
+      ],
+      "id": "a2212a8c-4f3b-4a1f-a838-64a89f1a4c57",
+      "name": "Publish",
+      "credentials": {
+        "instagramApi": {
+          "id": "MlInsjKM6Yr8xDhv",
+          "name": "Instagram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body;\nconst text = body.textContent || '';\nconst tags = Array.isArray(body.tags) ? body.tags.map(t => '#' + t).join(' ') : '';\nconst imageUrl = Array.isArray(body.mediafiles) ? body.mediafiles[0] : body.mediafiles;\nreturn {\n  message: text + (tags ? '\\\\n\\\\n' + tags : ''),\n  url: imageUrl\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ea196f82-f6ee-49dc-8d86-3dc5adb6afea",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        384,
+        96
+      ],
+      "id": "62ce33b7-357c-4f91-aaa6-c450f1728c1c",
+      "name": "Respond Error"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        384,
+        -96
+      ],
+      "id": "393fb9d3-ea10-4553-9c2f-78f177024675",
+      "name": "Respond OK"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b5468574-6cd7-4966-af95-623a3a85e704",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2a4496c82c54a45e705e73ca30cf4f75738a05666485c6f3c9dd182ac49eec1a"
+  },
+  "id": "26WtkiAhM0psmuDE",
+  "tags": []
+}
