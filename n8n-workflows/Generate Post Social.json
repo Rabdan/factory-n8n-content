@@ -13,19 +13,19 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        800,
-        -64
+        1488,
+        -432
       ]
     },
     {
       "parameters": {
-        "jsCode": "var res = `clarification: `;\nres = res + $input.first().json.body.prompt + ' for '+$input.first().json.body.network_name + ' at ' + $input.first().json.body.publish_date;\nconst syst=`Role: You are a social media content creator for NeuroVision Therapy Clinic, a vision therapy practice specializing in concussion recovery and learning-related vision problems. Brand Voice: Professional, empathetic, evidence-based, hopeful. Return JSON:\n{\n\"caption\": \"Post text\",\n\"tags\": [\"tag1\", \"tag2\"],\n\"image_query\": \"detailed_description_of_image_without_spaces\"\n}\nImportant: Use English in the image_query, replace spaces with %20 or underscores. Do not use special characters.`;\nreturn {\n  prompt: res,\n  systemPrompt: syst,\n  models: [\n    \"deepseek/deepseek-r1-0528:free\",\n    \"meta-llama/llama-3.2-3b-instruct:free\",\n    \"google/gemma-3-12b-it:free\",\n    \"mistralai/devstral-2512:free\"\n  ],\n  attempt: 0\n};"
+        "jsCode": "var res = `clarification: `;\nres = res + $input.first().json.body.prompt + ' for '+$input.first().json.body.network_name + ' at ' + $input.first().json.body.publish_date;\nconst syst=`Role: You are a social media content creator for NeuroVision Therapy Clinic, a vision therapy practice specializing in concussion recovery and learning-related vision problems. Brand Voice: Professional, empathetic, evidence-based, hopeful.`;\nreturn {\n  prompt: res,\n  systemPrompt: syst,\n  models: [\n    \"google/gemini-3-flash-preview\",\n    \"deepseek/deepseek-r1-0528:free\",\n    \"meta-llama/llama-3.2-3b-instruct:free\",\n    \"google/gemma-3-12b-it:free\",\n    \"mistralai/devstral-2512:free\"\n  ],\n  attempt: 0\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         -448,
-        -64
+        -352
       ],
       "id": "81106ea3-69c2-47a0-9989-32117e6ad497",
       "name": "prepare Prompt"
@@ -41,7 +41,7 @@
       "typeVersion": 2.1,
       "position": [
         -592,
-        -64
+        -352
       ],
       "id": "5582c27d-ed3c-4209-8373-092691014cb9",
       "name": "Webhook",
@@ -49,13 +49,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const aiOutput = $('Basic LLM Chain').first().json.text\nlet data;\ntry {\n  data = typeof aiOutput === 'string' ? JSON.parse(aiOutput) : aiOutput;\n} catch (e) {\n  const jsonMatch = aiOutput.match(/\\{[\\s\\S]*\\}/);\n  data = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: \"Failed to parse AI output\" };\n}\n\nconst cleanQuery = data.image_query.trim().replace(/\\s+/g, '_');\nconst imageUrl = `https://image.pollinations.ai/prompt/${cleanQuery}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;\n\nreturn {\n  caption: data.caption,\n  tags: data.tags,\n  image_url: imageUrl,\n  status: \"success\"\n};"
+        "jsCode": "const rawContent = $('Basic LLM Chain').first().json.text || \"\";\n\nif (!rawContent) {\n  throw new Error(\"Empty LLM\");\n}\n\nlet data;\n\ntry {\n  const jsonMatch = rawContent.match(/\\{[\\s\\S]*\\}/);\n  \n  if (jsonMatch) {\n    data = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error(\"JSON не найден в ответе\");\n  }\n\n  let cleanQuery = data.image_query\n    .replace(/[^a-zA-Z0-9\\s]/g, '_')\n    .trim()\n    .replace(/\\s+/g, '_');       \n\n  return {\n    caption: data.caption,\n    tags: Array.isArray(data.tags) ? data.tags : [],\n    image_query: cleanQuery,\n    image_url: [`https://image.pollinations.ai/prompt/${cleanQuery}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`]\n  };\n\n} catch (error) {\n  return {\n    error: \"Failed to parse AI response\",\n    raw_text: rawContent,\n    details: 'prompt error'\n  };\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        624,
-        -64
+        1360,
+        -432
       ],
       "id": "63e2563c-af75-4c8a-8933-cf123da90f07",
       "name": "prepare output"
@@ -69,8 +69,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        624,
-        112
+        784,
+        80
       ],
       "id": "62015d3c-8e22-4362-91a4-4adfba1bbe74",
       "name": "Respond Error"
@@ -82,7 +82,11 @@
         "messages": {
           "messageValues": [
             {
+              "type": "HumanMessagePromptTemplate",
               "message": "={{ $('prepare Prompt').first().json.systemPrompt }}"
+            },
+            {
+              "message": "Return JSON: {\"caption\":\"Post text\",\"tags\":[\"tag1\", \"tag2\"],\"image_query\": \"detailed_description_of_image_without_spaces\"} Important: Use English in the image_query, replace spaces with %20 or underscores. Do not use special characters."
             }
           ]
         },
@@ -92,7 +96,7 @@
       "typeVersion": 1.7,
       "position": [
         -240,
-        -64
+        -352
       ],
       "id": "589584ab-8c38-41a2-af09-3a121aa51950",
       "name": "Basic LLM Chain",
@@ -105,8 +109,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        48,
-        32
+        288,
+        96
       ],
       "id": "dc67aadd-8f88-4ace-9eac-41dc58b2f205",
       "name": "Code getModel"
@@ -139,8 +143,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        176,
-        32
+        576,
+        96
       ],
       "id": "8743f1d3-2a6d-46ba-aafe-0a648d5d81ec",
       "name": "If"
@@ -154,7 +158,7 @@
       "typeVersion": 1,
       "position": [
         -240,
-        112
+        -160
       ],
       "id": "3a38dd1d-4f3e-4c48-946d-24f1582ed366",
       "name": "OpenRouter Chat Model",
@@ -164,6 +168,279 @@
           "name": "OpenRouter account"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e08f50a2-dc5b-4e07-9570-2d250e32b22b",
+              "leftValue": "={{ $json.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        112,
+        -368
+      ],
+      "id": "c5980216-53be-4394-8b2d-d702ebe43692",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        96
+      ],
+      "id": "dd725b6f-618a-495d-b7b9-c83b9716d038",
+      "name": "Wait",
+      "webhookId": "2bb83048-c499-4598-8faa-372ea7e41148"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"caption\": \"Post text\",\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"image_query\": \"detailed_description_of_image_without_spaces\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        -160
+      ],
+      "id": "2976f800-0361-4cae-beff-f33713ddef0c",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawContent = $input.first().json.text || \"\";\nif (!rawContent) {\n  throw new Error(\"Empty LLM\");\n}\nlet data;\nconst jsonMatch = rawContent.match(/\\{[\\s\\S]*\\}/);\nif (jsonMatch) {\n  data = JSON.parse(jsonMatch[0]);\n} else {\n  throw new Error(\"JSON не найден в ответе\");\n}\nlet cleanQuery = data.image_query\n  .replace(/[^a-zA-Z0-9\\s]/g, ' ')\n  .trim()\n  .replace(/\\s+/g, ' ');       \n\nconst syst=`Aspect Ratio: [1:1 for Instagram, 1.91:1 for LinkedIn,1.91:1 for Facebook]`;\nreturn {\n  prompt: cleanQuery,\n  systemPrompt: syst,\n  models: [\n    \"google/gemini-3-pro-image-preview\",\n    \"liquid/lfm-2.5-1.2b-thinking:free\",\n    \"black-forest-labs/flux.2-klein-4b\",\n    \"bytedance-seed/seedream-4.5\",\n    \"sourceful/riverflow-v2-max-preview\",\n    \"black-forest-labs/flux.2-pro\"\n  ],\n  attempt: 0\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        -544
+      ],
+      "id": "f4ea58f9-694d-4e0f-af64-2fce628a42cd",
+      "name": "prepare Image"
+    },
+    {
+      "parameters": {
+        "model": "={{ $if($(\"Code imgModel\").isExecuted, $(\"Code imgModel\").last().json.next_model, $('prepare Image').first().json.models[0]) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        192
+      ],
+      "id": "96d92db6-a99a-4b74-8bfa-376bbad5f9f8",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "jt7bCtnP0FzcVfFa",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "626a7293-9f57-4909-8b69-99b2343f544c",
+              "leftValue": "={{ $('Code imgModel').first().json.retry }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        -416
+      ],
+      "id": "d278378d-d462-4e5d-aeb4-d70348c4d62a",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        976,
+        -416
+      ],
+      "id": "2c16084b-a935-43b1-9c8f-0598e4c3d882",
+      "name": "Wait1",
+      "webhookId": "2bb83048-c499-4598-8faa-372ea7e41148"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e08f50a2-dc5b-4e07-9570-2d250e32b22b",
+              "leftValue": "={{ $json.choices }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        -640
+      ],
+      "id": "097f19e8-de8d-447b-8dc6-45890302b6ad",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const models = $('prepare Image').first().json.models;\n\nlet lastAttempt = 0;\ntry {\n  lastAttempt = $('Code imgModel').last().json.attempt;\n} catch (e) {\n  lastAttempt = 0;\n}\n\nlet newAttempt = lastAttempt + 1;\n\n// 3. Проверяем, не вышли ли за пределы списка моделей\nif (newAttempt < models.length) {\n    return { \n      attempt: newAttempt, \n      retry: true,\n      next_model: models[newAttempt] \n    };\n} else {\n    return { \n      attempt: 0, \n      retry: false,\n      next_model: models[0] \n    };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -416
+      ],
+      "id": "8fd58b99-6924-41f9-aae5-5141a6ac0143",
+      "name": "Code imgModel"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "3f7f84f5-dcc1-451d-b3eb-8a55780a8c4c",
+      "name": "Respond1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        -656
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const imgContent = $('OpenRoute Image').first().json.choices[0].message.images\nconst rawContent = $('Basic LLM Chain').first().json.text || \"\";\nconst imgQuery = $('prepare Image').first().json.prompt\n\nif (!rawContent) {\n  throw new Error(\"Empty LLM\");\n}\n\nlet data;\n\ntry {\n  const jsonMatch = rawContent.match(/\\{[\\s\\S]*\\}/);\n  \n  if (jsonMatch) {\n    data = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error(\"JSON не найден в ответе\");\n  }\n\n  const imageUrls = Array.isArray(imgContent) \n    ? imgContent.map(img => img.image_url.url)\n    : [];\n  \n  return {\n    caption: data.caption,\n    tags: Array.isArray(data.tags) ? data.tags : [],\n    image_query: imgQuery,\n    image_url: imageUrls\n  };\n\n} catch (error) {\n  return {\n    error: \"Failed to parse AI response\",\n    raw_text: rawContent,\n    details: error\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        -656
+      ],
+      "id": "c3ac7fe7-c9fd-4ea6-94ad-53477ec29f82",
+      "name": "prepare output image"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "systemMessage": "=Generate image {{ $json.systemPrompt }}. and return public url image",
+          "passthroughBinaryImages": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1312,
+        32
+      ],
+      "id": "efe42675-e886-4187-b7d7-e3eecf2f38aa",
+      "name": "AI Agent",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $if($(\"Code imgModel\").isExecuted, $(\"Code imgModel\").last().json.next_model, $('prepare Image').first().json.models[0]) }}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.prompt }}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.systemPrompt }}\"\n    }\n  ],\n  \"modalities\": [\"image\", \"text\"]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        496,
+        -544
+      ],
+      "id": "09ae0b88-8575-47f4-8eb9-639068c06a7a",
+      "name": "OpenRoute Image",
+      "credentials": {
+        "openRouterApi": {
+          "id": "jt7bCtnP0FzcVfFa",
+          "name": "OpenRouter account"
+        }
+      },
+      "onError": "continueErrorOutput"
     }
   ],
   "pinData": {},
@@ -210,7 +487,7 @@
       "main": [
         [
           {
-            "node": "prepare output",
+            "node": "If1",
             "type": "main",
             "index": 0
           }
@@ -228,7 +505,7 @@
       "main": [
         [
           {
-            "node": "If",
+            "node": "Wait",
             "type": "main",
             "index": 0
           }
@@ -263,6 +540,155 @@
           }
         ]
       ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "prepare Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code getModel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        []
+      ]
+    },
+    "prepare Image": {
+      "main": [
+        [
+          {
+            "node": "OpenRoute Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "prepare output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "OpenRoute Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "prepare output image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code imgModel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code imgModel": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare output image": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [],
+        []
+      ]
+    },
+    "OpenRoute Image": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code imgModel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -270,7 +696,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "7fb4c0a0-0840-45b0-9d87-a04da6845ec1",
+  "versionId": "3e65e747-0192-4d39-b720-d268ff95dfe2",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "2a4496c82c54a45e705e73ca30cf4f75738a05666485c6f3c9dd182ac49eec1a"
