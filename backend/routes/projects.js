@@ -6,6 +6,7 @@ const nodemailer = require("nodemailer");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
+const imageDownloader = require("../utils/imageDownloader");
 
 // Get all projects for (mock) user
 router.get("/", async (req, res) => {
@@ -405,34 +406,21 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
 
           let mediaFiles = [];
 
-          // Download image from image_url if provided
+          // Download images from image_url(s) if provided
           if (webhookResult[0].image_url) {
-            const imageUrl = webhookResult[0].image_url;
-            const response = await axios.get(imageUrl, {
-              responseType: "stream",
-            });
-
-            const timestamp = Date.now();
-            const filename = `${timestamp}-generated.jpg`;
+            const imageUrls = Array.isArray(webhookResult[0].image_url)
+              ? webhookResult[0].image_url
+              : [webhookResult[0].image_url];
             const uploadDir = path.join(__dirname, "..", "data", "uploads");
-            const filepath = path.join(uploadDir, filename);
-
-            // Ensure upload directory exists
-            if (!fs.existsSync(uploadDir)) {
-              fs.mkdirSync(uploadDir, { recursive: true });
+            const downloadedFiles = await imageDownloader.downloadImages(
+              imageUrls,
+              uploadDir,
+              network.name,
+            );
+            mediaFiles.push(...downloadedFiles);
+            if (downloadedFiles.length > 0) {
+              console.log(`Downloaded images: ${downloadedFiles.join(", ")}`);
             }
-
-            // Download and save the image
-            const writer = fs.createWriteStream(filepath);
-            response.data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
-              writer.on("finish", resolve);
-              writer.on("error", reject);
-            });
-
-            mediaFiles.push(filename);
-            console.log(`Downloaded image to: ${filename}`);
           }
 
           // Create new post
