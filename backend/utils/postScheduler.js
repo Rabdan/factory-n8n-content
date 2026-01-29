@@ -152,10 +152,10 @@ class PostScheduler {
    */
   async updatePostStatus(postId, status) {
     try {
-      await db.query(
-        "UPDATE posts SET status = $1, updated_at = NOW() WHERE id = $2",
-        [status, postId],
-      );
+      await db.query("UPDATE posts SET status = $1 WHERE id = $2", [
+        status,
+        postId,
+      ]);
     } catch (err) {
       logger.error(`Error updating post status #${postId}:`, err);
     }
@@ -185,8 +185,7 @@ class PostScheduler {
                     UPDATE posts
                     SET status = 'approved',
                         publish_attempts = publish_attempts + 1,
-                        publish_at = $1,
-                        updated_at = NOW()
+                        publish_at = $1
                     WHERE id = $2
                 `,
           [retryAt, post.id],
@@ -198,7 +197,7 @@ class PostScheduler {
       } else {
         // If exceeded max attempts, leave status 'failed'
         await db.query(
-          "UPDATE posts SET publish_attempts = publish_attempts + 1, updated_at = NOW() WHERE id = $1",
+          "UPDATE posts SET publish_attempts = publish_attempts + 1 WHERE id = $1",
           [post.id],
         );
 

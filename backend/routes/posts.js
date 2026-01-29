@@ -112,7 +112,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Trigger Generation (Call n8n webhook)
+// Trigger Generation for a single post (text, image, or all)
 router.post("/:id/generate", async (req, res) => {
   const { id } = req.params;
   const { type } = req.body; // 'text', 'image', or 'all'
@@ -121,11 +121,11 @@ router.post("/:id/generate", async (req, res) => {
     // Fetch post and social network details
     const postResult = await db.query(
       `
-            SELECT p.*, sn.generation_webhook_url
-            FROM posts p
-            JOIN social_networks sn ON p.social_network_id = sn.id
-            WHERE p.id = $1
-        `,
+        SELECT p.*, sn.generation_webhook_url, sn.name as network_name
+        FROM posts p
+        JOIN social_networks sn ON p.social_network_id = sn.id
+        WHERE p.id = $1
+      `,
       [id],
     );
 
@@ -136,38 +136,91 @@ router.post("/:id/generate", async (req, res) => {
     const post = postResult.rows[0];
 
     if (!post.generation_webhook_url) {
-      return res
-        .status(400)
-        .json({
-          error: "No generation webhook configured for this social network",
-        });
+      return res.status(400).json({
+        error: "No generation webhook configured for this social network",
+      });
     }
 
-    // Call n8n webhook (Async, don't wait for completion if it takes long)
-    // In a real scenario, n8n would then call back to our API to update the post
-    try {
-      fetch(post.generation_webhook_url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          post_id: id,
-          type: type || "all",
-          current_text: post.text_content,
-          project_id: post.project_id,
-        }),
-      }).catch((err) => console.error("Error calling n8n:", err.message));
-    } catch (e) {
-      console.error("Fetch failed:", e);
+    // Prepare prompt (if needed, can be extended)
+    const textprompt = post.text_content || "create a simple post";
+
+    // Call webhook to generate content
+    const webhookResponse = await fetch(post.generation_webhook_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: textprompt,
+        network_name: post.network_name,
+        publish_date: post.publish_at,
+        type: type || "all",
+        post_id: id,
+        project_id: post.project_id,
+      }),
+    });
+
+    if (!webhookResponse.ok) {
+      throw new Error(
+        `Webhook failed: ${webhookResponse.status} ${webhookResponse.statusText}`,
+      );
     }
 
-    // Update post status to 'generating'
-    await db.query("UPDATE posts SET status = $1 WHERE id = $2", [
-      "generated",
-      id,
-    ]);
+    const webhookResult = await webhookResponse.json();
+    let updateFields = {};
+    let mediaFiles = [];
 
-    res.json({ message: "Generation triggered", status: "generated" });
+    // Handle text, image, or all
+    if (type === "all" || type === "text") {
+      updateFields.text_content =
+        webhookResult[0].caption ||
+        webhookResult[0].text_content ||
+        post.text_content;
+      if (webhookResult[0].tags) {
+        updateFields.tags = JSON.stringify(webhookResult[0].tags);
+      }
+    }
+
+    if ((type === "all" || type === "image") && webhookResult[0].image_url) {
+      const imageUrls = Array.isArray(webhookResult[0].image_url)
+        ? webhookResult[0].image_url
+        : [webhookResult[0].image_url];
+      const path = require("path");
+      const uploadDir = path.join(__dirname, "..", "data", "uploads");
+      const downloadedFiles = await imageDownloader.downloadImages(
+        imageUrls,
+        uploadDir,
+        post.network_name,
+      );
+      mediaFiles.push(...downloadedFiles);
+      if (mediaFiles.length > 0) {
+        updateFields.media_files = JSON.stringify(mediaFiles);
+      }
+    }
+
+    // Always set status to 'generated'
+    updateFields.status = "generated";
+
+    // Build dynamic update query
+    const setParts = [];
+    const values = [];
+    values.push(id);
+    let idx = 2;
+    for (const key in updateFields) {
+      setParts.push(`${key} = $${idx}`);
+      values.push(updateFields[key]);
+      idx++;
+    }
+    console.log(values);
+    console.log(setParts.join(", "));
+    if (setParts.length > 0) {
+      await db.query(
+        `UPDATE posts SET ${setParts.join(", ")} WHERE id = $1 RETURNING *`,
+        values,
+      );
+    }
+
+    res.json({ message: "Generation completed", status: "generated" });
   } catch (err) {
+    console.error("Generation failed:", err);
     res.status(500).json({ error: err.message });
   }
 });

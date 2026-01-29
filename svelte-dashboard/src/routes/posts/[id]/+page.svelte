@@ -22,6 +22,7 @@
     } from "@lucide/svelte";
     import { currentProject } from "$lib/stores";
     import { goto } from "$app/navigation";
+    import AlertDialog from "$lib/components/AlertDialog.svelte";
 
     let postId = page.params.id;
     let post = $state(null as any);
@@ -29,6 +30,35 @@
     let isSaving = $state(false);
     let isRegenerating = $state(false);
     let currentImageIndex = $state(0);
+
+    // Ensure currentImageIndex is always in bounds when post.media_files changes
+    $effect(() => {
+        if (post && post.media_files && post.media_files.length > 0) {
+            if (currentImageIndex >= post.media_files.length) {
+                currentImageIndex = 0;
+            }
+            if (currentImageIndex < 0) {
+                currentImageIndex = 0;
+            }
+        }
+    });
+
+    // AlertDialog state
+    let alertOpen = $state(false);
+    let alertTitle = $state("");
+    let alertDescription = $state("");
+    let alertVariant = $state("default");
+
+    function showAlert(
+        title: string,
+        description: string,
+        variant: "default" | "destructive" = "default",
+    ) {
+        alertTitle = title;
+        alertDescription = description;
+        alertVariant = variant;
+        alertOpen = true;
+    }
 
     async function fetchPost() {
         try {
@@ -99,10 +129,11 @@
             if (res.ok) {
                 const updated = await res.json();
                 post = { ...post, ...updated };
-                alert("Post saved successfully!");
+                showAlert("Success", "Post saved successfully!", "default");
             }
         } catch (err) {
             console.error("Error saving post:", err);
+            showAlert("Error", "Failed to save post.", "destructive");
         } finally {
             isSaving = false;
         }
@@ -118,12 +149,20 @@
                 body: JSON.stringify({ type }),
             });
             if (res.ok) {
-                alert("Regeneration triggered! Please wait for updates.");
-                // We might want to poll or use WS, for now just re-fetch after a delay or manually
+                showAlert(
+                    "Regeneration started",
+                    "Regeneration triggered! Please wait for updates.",
+                    "default",
+                );
                 setTimeout(fetchPost, 3000);
             }
         } catch (err) {
             console.error("Error regenerating:", err);
+            showAlert(
+                "Error",
+                "Failed to trigger regeneration.",
+                "destructive",
+            );
         } finally {
             isRegenerating = false;
         }
@@ -155,6 +194,23 @@
 </script>
 
 {#if post}
+    {#if isRegenerating}
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        >
+            <div
+                class="bg-white/90 rounded-full p-6 shadow-lg flex items-center justify-center"
+            >
+                <RefreshCw size={48} class="animate-spin text-primary" />
+            </div>
+        </div>
+    {/if}
+    <AlertDialog
+        bind:open={alertOpen}
+        title={alertTitle}
+        description={alertDescription}
+        variant={alertVariant}
+    />
     <div
         class="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
     >
@@ -300,7 +356,7 @@
                         </h2>
                         {#if post.status !== "published"}
                             <button
-                                onclick={handleRegenerate}
+                                onclick={() => handleRegenerate("image")}
                                 class="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md hover:bg-primary/20 transition-colors flex items-center gap-1"
                             >
                                 <Sparkles size={12} />
@@ -367,25 +423,36 @@
                                     {#if post.media_files.length > 1}
                                         <!-- Previous button -->
                                         <button
-                                            onclick={() =>
-                                                (currentImageIndex =
-                                                    (currentImageIndex -
-                                                        1 +
-                                                        post.media_files
-                                                            .length) %
-                                                    post.media_files.length)}
-                                            class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors"
+                                            onclick={() => {
+                                                if (
+                                                    post.media_files.length > 0
+                                                ) {
+                                                    currentImageIndex =
+                                                        (currentImageIndex -
+                                                            1 +
+                                                            post.media_files
+                                                                .length) %
+                                                        post.media_files.length;
+                                                }
+                                            }}
+                                            class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-50"
                                         >
                                             <ChevronLeft size={16} />
                                         </button>
 
                                         <!-- Next button -->
                                         <button
-                                            onclick={() =>
-                                                (currentImageIndex =
-                                                    (currentImageIndex + 1) %
-                                                    post.media_files.length)}
-                                            class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors"
+                                            onclick={() => {
+                                                if (
+                                                    post.media_files.length > 0
+                                                ) {
+                                                    currentImageIndex =
+                                                        (currentImageIndex +
+                                                            1) %
+                                                        post.media_files.length;
+                                                }
+                                            }}
+                                            class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-50"
                                         >
                                             <ChevronRight size={16} />
                                         </button>
@@ -396,8 +463,15 @@
                                         >
                                             {#each post.media_files as _, i}
                                                 <button
-                                                    onclick={() =>
-                                                        (currentImageIndex = i)}
+                                                    onclick={() => {
+                                                        if (
+                                                            post.media_files
+                                                                .length > 0
+                                                        ) {
+                                                            currentImageIndex =
+                                                                i;
+                                                        }
+                                                    }}
                                                     class="w-2 h-2 rounded-full transition-colors {currentImageIndex ===
                                                     i
                                                         ? 'bg-white'
