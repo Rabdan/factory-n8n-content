@@ -60,6 +60,30 @@
         alertOpen = true;
     }
 
+    // Delete post logic
+    let deleteDialogOpen = $state(false);
+    async function handleDeletePost() {
+        try {
+            const res = await fetch(`/api/posts/${postId}`, {
+                method: "DELETE",
+            });
+            if (res.ok) {
+                showAlert("Deleted", "Post deleted successfully.", "default");
+                setTimeout(() => goto("/calendar"), 1200);
+            } else {
+                const err = await res.json();
+                showAlert(
+                    "Error",
+                    err.error || "Failed to delete post.",
+                    "destructive",
+                );
+            }
+        } catch (err) {
+            showAlert("Error", "Failed to delete post.", "destructive");
+        }
+        deleteDialogOpen = false;
+    }
+
     async function fetchPost() {
         try {
             const res = await fetch(`/api/posts/${postId}`);
@@ -210,6 +234,13 @@
         title={alertTitle}
         description={alertDescription}
         variant={alertVariant}
+    />
+    <AlertDialog
+        bind:open={deleteDialogOpen}
+        title="Delete Post"
+        description="Are you sure you want to delete this post? This action cannot be undone."
+        variant="destructive"
+        onConfirm={handleDeletePost}
     />
     <div
         class="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
@@ -623,16 +654,23 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="pt-6 border-t border-border space-y-2">
                         {#if post.status !== "published"}
+                            <button
+                                class="w-full bg-destructive text-destructive-foreground py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-destructive/90 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                onclick={() => (deleteDialogOpen = true)}
+                            >
+                                <X size={16} />
+                                Delete Post
+                            </button>
+
                             <button
                                 onclick={handleSave}
                                 disabled={isSaving}
                                 class="w-full bg-primary text-primary-foreground py-2 rounded-lg font-bold text-sm shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
                             >
                                 <Save size={16} />
-                                Save Post
+                                Save Draft
                             </button>
 
                             <button

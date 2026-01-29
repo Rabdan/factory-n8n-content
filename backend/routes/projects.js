@@ -242,7 +242,7 @@ router.get("/:idproject/content-plans", async (req, res) => {
   }
 });
 
-// Create content plan
+// Create or delete content plan (delete: if dates.isEmpty)
 router.post("/:idproject/content-plans", async (req, res) => {
   const { idproject } = req.params;
   const { id, name, prompt, dates, platforms, color } = req.body;
@@ -262,6 +262,9 @@ router.post("/:idproject/content-plans", async (req, res) => {
       res.json(result.rows[0]);
     } else {
       if (dates.isEmpty) {
+        // Delete all posts for this plan
+        await db.query("DELETE FROM posts WHERE content_plan_id = $1", [id]);
+        // Delete the plan itself
         await db.query("DELETE FROM content_plans WHERE id = $1", [id]);
         res.json({ id });
       } else {
@@ -418,7 +421,7 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
                 media_files,
                 tags,
                 status
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'generated') RETURNING *`,
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft') RETURNING *`,
             [
               plan.project_id,
               network.id,

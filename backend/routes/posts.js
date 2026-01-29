@@ -196,8 +196,8 @@ router.post("/:id/generate", async (req, res) => {
       }
     }
 
-    // Always set status to 'generated'
-    updateFields.status = "generated";
+    // Always set status to 'draft'
+    updateFields.status = "draft";
 
     // Build dynamic update query
     const setParts = [];
@@ -221,6 +221,25 @@ router.post("/:id/generate", async (req, res) => {
     res.json({ message: "Generation completed", status: "generated" });
   } catch (err) {
     console.error("Generation failed:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Delete a post by id
+ */
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query(
+      "DELETE FROM posts WHERE id = $1 RETURNING *",
+      [id],
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    res.json({ message: "Post deleted", post: result.rows[0] });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

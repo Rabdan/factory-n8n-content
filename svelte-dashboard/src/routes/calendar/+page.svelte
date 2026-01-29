@@ -20,6 +20,54 @@
     import { currentProject } from "$lib/stores";
     import { goto } from "$app/navigation";
 
+    // --- Delete Plan Logic ---
+    let deletePlanDialogOpen = $state(false);
+    let deletePlanBlockedReason = $state("");
+    let isDeletingPlan = $state(false);
+
+    function hasPublishedOrApprovedPosts(planId: number) {
+        return posts.some(
+            (p) =>
+                p.content_plan_id === planId &&
+                (p.status === "published" || p.status === "approved"),
+        );
+    }
+
+    async function handleDeletePlan() {
+        if (!isEditingPlan || !newPlan.id) return;
+        if (hasPublishedOrApprovedPosts(newPlan.id)) {
+            deletePlanBlockedReason =
+                "Cannot delete: This campaign contains posts with status 'published' or 'approved'.";
+            deletePlanDialogOpen = true;
+            return;
+        }
+        isDeletingPlan = true;
+        try {
+            // Delete all posts for this plan
+            await fetch(`/api/posts?content_plan_id=${newPlan.id}`, {
+                method: "DELETE",
+            });
+            // Delete the plan itself
+            await fetch(`/api/projects/${$currentProject.id}/content-plans`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: newPlan.id,
+                    dates: { isEmpty: true },
+                }),
+            });
+            showPlanModal = false;
+            await fetchContentPlans();
+            await fetchPosts();
+        } catch (err) {
+            deletePlanBlockedReason =
+                "Failed to delete campaign. Please try again.";
+            deletePlanDialogOpen = true;
+        } finally {
+            isDeletingPlan = false;
+        }
+    }
+
     // API base for assets
     const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -1351,6 +1399,19 @@
                 >
                     Cancel
                 </button>
+                {#if isEditingPlan && !isPast(newPlan.dates[newPlan.dates.length - 1])}
+                    <button
+                        onclick={() => {
+                            deletePlanDialogOpen = true;
+                            showPlanModal = false;
+                        }}
+                        class="px-4 py-2 rounded-md font-bold text-sm hover:bg-muted transition-colors border border-gray-800 dark:border-gray-300"
+                        disabled={isPlanGenerating ||
+                            hasPublishedOrApprovedPosts(newPlan.id)}
+                    >
+                        Delete Campaign
+                    </button>
+                {/if}
                 <button
                     onclick={() => !isPlanGenerating && handleCreatePlan(false)}
                     class="px-4 py-2 border rounded-md font-bold text-sm transition-all"
@@ -1549,7 +1610,25 @@
     description={alertDialogDescription}
     confirmText={alertDialogConfirmText}
     variant={alertDialogVariant}
-    onConfirm={() => alertDialogCallback?.()}
+    onConfirm={alertDialogCallback}
+/>
+<AlertDialog
+    bind:open={deletePlanDialogOpen}
+    class="z-500"
+    title="Delete Campaign"
+    description={deletePlanBlockedReason ||
+        "Are you sure you want to delete this campaign? All posts for this campaign will be deleted."}
+    variant={deletePlanBlockedReason ? "default" : "destructive"}
+    confirmText={deletePlanBlockedReason
+        ? "OK"
+        : isDeletingPlan
+          ? "Deleting..."
+          : "Delete"}
+    onConfirm={() => {
+        if (!deletePlanBlockedReason && !isDeletingPlan) handleDeletePlan();
+        deletePlanDialogOpen = false;
+        deletePlanBlockedReason = "";
+    }}
 />
 
 <style>
