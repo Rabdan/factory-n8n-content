@@ -13,7 +13,14 @@
 
     const API_BASE = import.meta.env.VITE_API_URL || "";
 
-    let inviteEmail = $state("");
+    let addMemberLogin = $state("");
+    let addMemberPassword = $state("");
+    let addMemberRole = $state("Member");
+    let addMemberLoading = $state(false);
+    let passwordOld = $state("");
+    let passwordNew = $state("");
+    let passwordChangeLoading = $state(false);
+    let passwordChangeMessage = $state("");
     let showAddNetwork = $state(false);
     let isSaving = $state(false);
     let editingNetworkId = $state<number | null>(null);
@@ -37,31 +44,99 @@
         }
     }
 
-    async function sendInvite() {
-        if (!inviteEmail || !$currentProject) return;
-
+    async function addMember() {
+        if (!addMemberLogin || !addMemberPassword || !$currentProject) return;
+        addMemberLoading = true;
+        addMemberRole = "member";
         try {
             const response = await fetch(
-                `/api/projects/${$currentProject.id}/invite`,
+                `/api/projects/${$currentProject.id}/add-member`,
                 {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ email: inviteEmail }),
+                    body: JSON.stringify({
+                        login: addMemberLogin,
+                        password: addMemberPassword,
+                        role: addMemberRole,
+                    }),
                 },
             );
-
             if (response.ok) {
-                alert("Invite sent successfully!");
-                inviteEmail = "";
+                await selectProject($currentProject.id);
+                addMemberLogin = "";
+                addMemberPassword = "";
+                addMemberRole = "member";
             } else {
                 const error = await response.json();
-                alert(`Failed to send invite: ${error.error}`);
+                alert(`Failed to add member: ${error.error}`);
             }
         } catch (error) {
-            console.error("Error sending invite:", error);
-            alert("An error occurred while sending the invite.");
+            console.error("Error adding member:", error);
+            alert("An error occurred while adding the member.");
+        } finally {
+            addMemberLoading = false;
+        }
+    }
+
+    async function removeMember(userId: number) {
+        if (!$currentProject) return;
+        if (!confirm("Are you sure you want to remove this member?")) return;
+        try {
+            const response = await fetch(
+                `/api/projects/${$currentProject.id}/members/${userId}`,
+                {
+                    method: "DELETE",
+                },
+            );
+            if (response.ok) {
+                await selectProject($currentProject.id);
+            } else {
+                const error = await response.json();
+                alert(`Failed to remove member: ${error.error}`);
+            }
+        } catch (error) {
+            console.error("Error removing member:", error);
+            alert("An error occurred while removing the member.");
+        }
+    }
+
+    async function changePassword(userId: number) {
+        if (!passwordOld || !passwordNew) {
+            passwordChangeMessage = "Please fill in both fields.";
+            return;
+        }
+        passwordChangeLoading = true;
+        passwordChangeMessage = "";
+        try {
+            const response = await fetch(
+                `/api/projects/users/${userId}/password`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        oldPassword: passwordOld,
+                        newPassword: passwordNew,
+                    }),
+                },
+            );
+            if (response.ok) {
+                passwordChangeMessage = "Password changed successfully!";
+                passwordOld = "";
+                passwordNew = "";
+            } else {
+                const error = await response.json();
+                passwordChangeMessage =
+                    error.error || "Failed to change password.";
+            }
+        } catch (error) {
+            passwordChangeMessage =
+                "An error occurred while changing the password.";
+        } finally {
+            passwordChangeLoading = false;
         }
     }
 
@@ -196,32 +271,79 @@
         </p>
     </div>
 
+    <!-- Change Password Section -->
+    <div class="bg-card border border-border rounded-xl p-6 mt-8">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold">Change Password</h2>
+        </div>
+        <div class="flex flex-col md:flex-row gap-4 items-center">
+            <input
+                type="password"
+                placeholder="Old Password"
+                bind:value={passwordOld}
+                class="w-full md:w-1/3 px-3 py-2.5 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            />
+            <input
+                type="password"
+                placeholder="New Password"
+                bind:value={passwordNew}
+                class="w-full md:w-1/3 px-3 py-2.5 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            />
+            <button
+                class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                disabled={passwordChangeLoading || !passwordOld || !passwordNew}
+                onclick={() =>
+                    changePassword(
+                        $currentProject?.current_user_id ||
+                            $currentProject?.owner_id ||
+                            1,
+                    )}
+            >
+                {passwordChangeLoading ? "Changing..." : "Change Password"}
+            </button>
+        </div>
+        {#if passwordChangeMessage}
+            <div
+                class="mt-2 text-sm"
+                class:text-green-600={passwordChangeMessage ===
+                    "Password changed successfully!"}
+                class:text-red-600={passwordChangeMessage !==
+                    "Password changed successfully!"}
+            >
+                {passwordChangeMessage}
+            </div>
+        {/if}
+    </div>
+
     <!-- Team Members Section -->
     <div class="bg-card border border-border rounded-xl p-6">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-xl font-semibold">Team Members</h2>
         </div>
 
-        <!-- Invite Form -->
+        <!-- Add Member Form -->
         <div class="flex gap-3 mb-6">
-            <div class="flex-1 relative">
-                <Mail
-                    size={18}
-                    class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-                />
-                <input
-                    type="email"
-                    placeholder="Enter email to invite..."
-                    bind:value={inviteEmail}
-                    class="w-full pl-10 pr-4 py-2.5 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                />
-            </div>
+            <input
+                type="text"
+                placeholder="Login"
+                bind:value={addMemberLogin}
+                class="w-1/4 px-3 py-2.5 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            />
+            <input
+                type="password"
+                placeholder="Password"
+                bind:value={addMemberPassword}
+                class="w-1/4 px-3 py-2.5 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            />
             <button
-                onclick={sendInvite}
-                class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                onclick={addMember}
+                class="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                disabled={addMemberLoading ||
+                    !addMemberLogin ||
+                    !addMemberPassword}
             >
                 <Plus size={18} />
-                Send Invite
+                Add Member
             </button>
         </div>
 
@@ -236,11 +358,11 @@
                             <div
                                 class="w-10 h-10 rounded-full bg-primary/20 text-primary font-medium flex items-center justify-center"
                             >
-                                {getAvatar(member.email)}
+                                {getAvatar(member.login || member.email)}
                             </div>
                             <div>
                                 <p class="font-medium text-sm">
-                                    {member.email}
+                                    {member.login || member.email}
                                 </p>
                                 <p class="text-xs text-muted-foreground">
                                     {member.role}
@@ -250,6 +372,7 @@
                         {#if member.role !== "Owner"}
                             <button
                                 class="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                                onclick={() => removeMember(member.id)}
                             >
                                 <Trash2 size={16} class="text-destructive" />
                             </button>

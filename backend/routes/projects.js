@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const axios = require("axios");
 const fs = require("fs");
@@ -135,110 +136,93 @@ router.delete("/social-networks/:networkId", async (req, res) => {
   }
 });
 
-// Invite user to project
-router.post("/:id/invite", async (req, res) => {
+/**
+ * Add member to project (with login and password)
+ * Expects: { login, password, role }
+ */
+router.post("/:id/add-member", async (req, res) => {
   const { id: projectId } = req.params;
-  const { email } = req.body;
-
+  const { login, password, role } = req.body;
+  if (!login || !password) {
+    return res.status(400).json({ error: "Login and password are required" });
+  }
   try {
-    // Generate a unique token
-    const token = crypto.randomBytes(20).toString("hex");
-    const expires_at = new Date();
-    expires_at.setDate(expires_at.getDate() + 7); // Token expires in 7 days
-
-    // Store invitation in the database
+    // Check if user exists
+    let userResult = await db.query("SELECT * FROM users WHERE email = $1", [
+      login,
+    ]);
+    let userId;
+    if (userResult.rows.length === 0) {
+      // Create user with bcrypt hashed password
+      const hashed = await bcrypt.hash(password, 10);
+      userResult = await db.query(
+        "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id",
+        [login, hashed],
+      );
+      userId = userResult.rows[0].id;
+    } else {
+      return res
+        .status(400)
+        .json({ error: "User with this login already exists" });
+    }
+    // Add to project_members
     await db.query(
-      "INSERT INTO project_invitations (project_id, email, token, expires_at) VALUES ($1, $2, $3, $4)",
-      [projectId, email, token, expires_at],
+      "INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3)",
+      [projectId, userId, role || "member"],
     );
-
-    // Send invitation email
-    const transporter = nodemailer.createTransport({
-      // TODO: Replace with actual SMTP server configuration
-      host: process.env.SMTP_HOST || "smtp.ethereal.email",
-      port: parseInt(process.env.SMTP_PORT) || 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    const acceptUrl = `${req.protocol}://${req.get("host")}/api/projects/accept-invitation?token=${token}`;
-
-    await transporter.sendMail({
-      from: '"Content Factory" <noreply@content-factory.com>',
-      to: email,
-      subject: "You have been invited to a project",
-      html: `
-                <p>You have been invited to join a project.</p>
-                <p>Click <a href="${acceptUrl}">here</a> to accept the invitation.</p>
-                <p>This link will expire in 7 days.</p>
-            `,
-    });
-
-    res.json({ message: "Invitation sent successfully." });
+    res.json({ message: "Member added", user_id: userId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Accept invitation
-router.get("/accept-invitation", async (req, res) => {
-  const { token } = req.query;
-
+/**
+ * Remove member from project
+ * DELETE /:projectId/members/:userId
+ */
+router.delete("/:projectId/members/:userId", async (req, res) => {
+  const { projectId, userId } = req.params;
   try {
-    // Find invitation by token
-    const result = await db.query(
-      "SELECT * FROM project_invitations WHERE token = $1",
-      [token],
-    );
-    if (result.rows.length === 0) {
-      return res.status(400).send("Invalid or expired invitation token.");
-    }
-
-    const invitation = result.rows[0];
-
-    // Check if token is expired
-    if (new Date(invitation.expires_at) < new Date()) {
-      await db.query("DELETE FROM project_invitations WHERE token = $1", [
-        token,
-      ]);
-      return res.status(400).send("Invitation token has expired.");
-    }
-
-    const { project_id, email } = invitation;
-
-    // Find or create user
-    let userResult = await db.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
-    let userId;
-    if (userResult.rows.length === 0) {
-      // User does not exist, create a new one
-      userResult = await db.query(
-        "INSERT INTO users (email) VALUES ($1) RETURNING id",
-        [email],
-      );
-      userId = userResult.rows[0].id;
-    } else {
-      userId = userResult.rows[0].id;
-    }
-
-    // Add user to project_members
     await db.query(
-      "INSERT INTO project_members (project_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-      [project_id, userId],
+      "DELETE FROM project_members WHERE project_id = $1 AND user_id = $2",
+      [projectId, userId],
     );
+    res.json({ message: "Member removed" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    // Delete invitation
-    await db.query("DELETE FROM project_invitations WHERE id = $1", [
-      invitation.id,
+/**
+ * Change password for current user
+ * PATCH /users/:userId/password
+ * Expects: { oldPassword, newPassword }
+ */
+router.patch("/users/:userId/password", async (req, res) => {
+  const { userId } = req.params;
+  const { oldPassword, newPassword } = req.body;
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ error: "Old and new password required" });
+  }
+  try {
+    const userResult = await db.query(
+      "SELECT password_hash FROM users WHERE id = $1",
+      [userId],
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const passwordHash = userResult.rows[0].password_hash;
+    const isMatch = await bcrypt.compare(oldPassword, passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Old password is incorrect" });
+    }
+    const hashedNew = await bcrypt.hash(newPassword, 10);
+    await db.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
+      hashedNew,
+      userId,
     ]);
-
-    // Redirect to the frontend project page (or a success page)
-    // For now, just send a success message
-    res.send("Invitation accepted! You have been added to the project.");
+    res.json({ message: "Password updated" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
