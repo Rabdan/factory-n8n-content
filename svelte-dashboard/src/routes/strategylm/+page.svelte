@@ -17,6 +17,13 @@
 
     const API_BASE = import.meta.env.VITE_API_URL || "";
 
+    function generateId(): string {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+
     interface Source {
         id: string;
         name: string;
@@ -105,7 +112,7 @@
             sources = [
                 ...sources,
                 {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     name: file.name,
                     type,
                     size: formatFileSize((file.size / 1024).toFixed(1) + " KB"),
@@ -123,7 +130,7 @@
         if (!chatInput.trim() || isLoading) return;
 
         const userMessage: Message = {
-            id: crypto.randomUUID(),
+            id: generateId(),
             role: "user",
             content: chatInput,
             timestamp: new Date(),
@@ -151,7 +158,7 @@
             const data = await response.json();
 
             const assistantMessage: Message = {
-                id: crypto.randomUUID(),
+                id: generateId(),
                 role: "assistant",
                 content:
                     data.message ||
@@ -163,7 +170,7 @@
         } catch (error) {
             console.error("Chat error:", error);
             const assistantMessage: Message = {
-                id: crypto.randomUUID(),
+                id: generateId(),
                 role: "assistant",
                 content: "Sorry, something went wrong. Please try again.",
                 timestamp: new Date(),
