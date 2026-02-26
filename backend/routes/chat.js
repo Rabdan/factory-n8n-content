@@ -42,7 +42,7 @@ Be helpful and provide accurate information based on the sources provided.`;
         "X-Title": "Content LM",
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-haiku",
+        model: "google/gemini-3-flash-preview",
         messages,
         max_tokens: 2000,
       }),
