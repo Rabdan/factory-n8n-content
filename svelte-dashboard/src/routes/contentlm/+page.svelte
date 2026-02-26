@@ -372,78 +372,67 @@
 
             <div class="flex-1 overflow-y-auto p-4 space-y-4">
                 <!-- Quick Actions -->
-                <div class="grid grid-cols-1 gap-2">
+                <div class="space-y-2">
                     <h3
                         class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                     >
                         Actions
                     </h3>
-
-                    <button
-                        class="flex items-center gap-3 p-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 transition-opacity text-white"
-                    >
-                        <div
-                            class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <Pen size={16} class="text-white" />
-                        </div>
-                        <p class="text-sm font-medium">Create Post</p>
-                    </button>
+                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <Pen size={14} class="text-white" />
+                            </div>
+                            <p class="text-sm font-medium">Create Post</p>
+                        </button>
 
-                    <button
-                        class="flex items-center gap-3 p-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:opacity-90 transition-opacity text-white"
-                    >
-                        <div
-                            class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                        <button
+                            class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <Image size={16} class="text-white" />
-                        </div>
-                        <p class="text-sm font-medium">Image Post</p>
-                    </button>
+                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <Image size={14} class="text-white" />
+                            </div>
+                            <p class="text-sm font-medium">Image Post</p>
+                        </button>
 
-                    <button
-                        class="flex items-center gap-3 p-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90 transition-opacity text-white"
-                    >
-                        <div
-                            class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                        <button
+                            class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <Video size={16} class="text-white" />
-                        </div>
-                        <p class="text-sm font-medium">Video Post</p>
-                    </button>
+                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <Video size={14} class="text-white" />
+                            </div>
+                            <p class="text-sm font-medium">Video Post</p>
+                        </button>
 
-                    <button
-                        class="flex items-center gap-3 p-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 hover:opacity-90 transition-opacity text-white"
-                    >
-                        <div
-                            class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                        <button
+                            class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <Pen size={16} class="text-white" />
-                        </div>
-                        <p class="text-sm font-medium">Content Plan</p>
-                    </button>
+                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <Pen size={14} class="text-white" />
+                            </div>
+                            <p class="text-sm font-medium">Content Plan</p>
+                        </button>
 
-                    <button
-                        class="flex items-center gap-3 p-2 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:opacity-90 transition-opacity text-white"
-                    >
-                        <div
-                            class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                        <button
+                            class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <Pen size={16} class="text-white" />
-                        </div>
-                        <p class="text-sm font-medium">Calendar</p>
-                    </button>
+                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <Pen size={14} class="text-white" />
+                            </div>
+                            <p class="text-sm font-medium">Calendar</p>
+                        </button>
 
-                    <button
-                        class="flex items-center gap-3 p-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 hover:opacity-90 transition-opacity text-white"
-                    >
-                        <div
-                            class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                        <button
+                            class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <Pen size={16} class="text-white" />
-                        </div>
-                        <p class="text-sm font-medium">Personalize</p>
-                    </button>
+                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <Pen size={14} class="text-white" />
+                            </div>
+                            <p class="text-sm font-medium">Personalize</p>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Recent Generations -->
