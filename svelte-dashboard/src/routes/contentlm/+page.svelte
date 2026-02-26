@@ -151,7 +151,7 @@
     }
 </script>
 
-<div class="w-auto h-screen w-screen -m-8 flex flex-col overflow-hidden w-auto">
+<div class="w-full h-full flex flex-col overflow-hidden w-auto">
     <div class="flex-1 flex min-h-0 overflow-hidden">
         <!-- Sources Panel - Left -->
         <div
