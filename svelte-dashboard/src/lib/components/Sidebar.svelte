@@ -31,7 +31,7 @@
 
     const links = [
         { href: "/", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/contentlm", label: "Content LM", icon: Brain },
+        { href: "/strategylm", label: "Strategy LM", icon: Brain },
         { href: "/calendar", label: "Content calendar", icon: Calendar },
         { href: "/analytics", label: "Analytics", icon: BarChart3 },
         { href: "/files", label: "Training", icon: FileText },

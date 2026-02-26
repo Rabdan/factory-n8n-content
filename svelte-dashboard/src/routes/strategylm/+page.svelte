@@ -363,7 +363,7 @@
             <div class="p-4 border-b border-border">
                 <h2 class="text-lg font-semibold flex items-center gap-2">
                     <Wand2 size={20} class="text-primary" />
-                    Studio
+                    Deliverables
                 </h2>
                 <p class="text-sm text-muted-foreground mt-1">
                     Generate content from your sources
