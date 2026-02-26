@@ -58,11 +58,13 @@ const projectsRouter = require("./routes/projects");
 const postsRouter = require("./routes/posts");
 const authRouter = require("./routes/auth");
 const schedulerRouter = require("./routes/scheduler");
+const chatRouter = require("./routes/chat");
 
 app.use("/api/auth", authRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/posts", postsRouter);
 app.use("/api/scheduler", schedulerRouter);
+app.use("/api/chat", chatRouter);
 
 // Health check
 app.get("/health", (req, res) => {

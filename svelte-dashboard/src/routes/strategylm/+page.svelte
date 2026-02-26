@@ -15,6 +15,8 @@
     } from "@lucide/svelte";
     import { currentProject, authFetch } from "$lib/stores";
 
+    const API_BASE = import.meta.env.VITE_API_URL || "";
+
     interface Source {
         id: string;
         name: string;
@@ -131,16 +133,45 @@
         chatInput = "";
         isLoading = true;
 
-        setTimeout(() => {
+        try {
+            const history = messages.slice(0, -1).map((m) => ({
+                role: m.role,
+                content: m.content,
+            }));
+            const response = await authFetch(`/api/chat`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: query,
+                    sources: sources,
+                    history,
+                }),
+            });
+
+            const data = await response.json();
+
             const assistantMessage: Message = {
                 id: crypto.randomUUID(),
                 role: "assistant",
-                content: `Based on your ${sources.length} source(s), here's what I found about "${query}":\n\nI've analyzed your uploaded documents and can help you generate content. You can ask me questions about your sources or request content generation in the Studio panel.`,
+                content:
+                    data.message ||
+                    data.error ||
+                    "Sorry, I could not generate a response.",
                 timestamp: new Date(),
             };
             messages = [...messages, assistantMessage];
+        } catch (error) {
+            console.error("Chat error:", error);
+            const assistantMessage: Message = {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                content: "Sorry, something went wrong. Please try again.",
+                timestamp: new Date(),
+            };
+            messages = [...messages, assistantMessage];
+        } finally {
             isLoading = false;
-        }, 1000);
+        }
     }
 
     function handleKeyDown(e: KeyboardEvent) {
