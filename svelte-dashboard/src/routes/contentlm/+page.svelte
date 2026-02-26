@@ -151,7 +151,7 @@
     }
 </script>
 
-<div class="h-screen w-screen -m-8 flex flex-col overflow-hidden w-auto">
+<div class="w-auto h-screen w-screen -m-8 flex flex-col overflow-hidden w-auto">
     <div class="flex-1 flex min-h-0 overflow-hidden">
         <!-- Sources Panel - Left -->
         <div
@@ -382,7 +382,9 @@
                         <button
                             class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                            <div
+                                class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                            >
                                 <Pen size={14} class="text-white" />
                             </div>
                             <p class="text-sm font-medium">Create Post</p>
@@ -391,7 +393,9 @@
                         <button
                             class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                            <div
+                                class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                            >
                                 <Image size={14} class="text-white" />
                             </div>
                             <p class="text-sm font-medium">Image Post</p>
@@ -400,7 +404,9 @@
                         <button
                             class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                            <div
+                                class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                            >
                                 <Video size={14} class="text-white" />
                             </div>
                             <p class="text-sm font-medium">Video Post</p>
@@ -409,7 +415,9 @@
                         <button
                             class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                            <div
+                                class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                            >
                                 <Pen size={14} class="text-white" />
                             </div>
                             <p class="text-sm font-medium">Content Plan</p>
@@ -418,7 +426,9 @@
                         <button
                             class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                            <div
+                                class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                            >
                                 <Pen size={14} class="text-white" />
                             </div>
                             <p class="text-sm font-medium">Calendar</p>
@@ -427,7 +437,9 @@
                         <button
                             class="flex items-center gap-2 p-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 hover:opacity-90 transition-opacity text-white"
                         >
-                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                            <div
+                                class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0"
+                            >
                                 <Pen size={14} class="text-white" />
                             </div>
                             <p class="text-sm font-medium">Personalize</p>
