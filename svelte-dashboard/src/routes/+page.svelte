@@ -1,7 +1,7 @@
 <script lang="ts">
     import { BarChart3, TrendingUp, Users, FileText, Calendar, Clock } from "@lucide/svelte";
     import { onMount } from "svelte";
-    import { currentProject } from "$lib/stores";
+    import { currentProject, authFetch } from "$lib/stores";
 
     const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -40,7 +40,7 @@
             const postsUrl = `/api/posts?projectId=${$currentProject.id}`;
             console.log('Fetching posts from:', postsUrl);
             
-            const postsRes = await fetch(postsUrl);
+            const postsRes = await authFetch(postsUrl);
             if (postsRes.ok) {
                 posts = await postsRes.json();
                 console.log('Posts loaded:', posts.length);
@@ -52,7 +52,7 @@
             const projectUrl = `/api/projects/${$currentProject.id}`;
             console.log('Fetching project from:', projectUrl);
             
-            const projectRes = await fetch(projectUrl);
+            const projectRes = await authFetch(projectUrl);
             if (projectRes.ok) {
                 const project = await projectRes.json();
                 teamMembers = project.members || [];

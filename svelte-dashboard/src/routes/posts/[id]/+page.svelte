@@ -20,7 +20,7 @@
         ChevronLeft,
         ChevronRight,
     } from "@lucide/svelte";
-    import { currentProject } from "$lib/stores";
+    import { currentProject, authFetch } from "$lib/stores";
     import { goto } from "$app/navigation";
     import AlertDialog from "$lib/components/AlertDialog.svelte";
 
@@ -64,7 +64,7 @@
     let deleteDialogOpen = $state(false);
     async function handleDeletePost() {
         try {
-            const res = await fetch(`/api/posts/${postId}`, {
+            const res = await authFetch(`/api/posts/${postId}`, {
                 method: "DELETE",
             });
             if (res.ok) {
@@ -86,7 +86,7 @@
 
     async function fetchPost() {
         try {
-            const res = await fetch(`/api/posts/${postId}`);
+            const res = await authFetch(`/api/posts/${postId}`);
             if (res.ok) {
                 post = await res.json();
                 // Ensure tags is an array
@@ -115,7 +115,7 @@
     async function fetchContentPlans() {
         if (!$currentProject) return;
         try {
-            const res = await fetch(
+            const res = await authFetch(
                 `/api/projects/${$currentProject.id}/content-plans`,
             );
             if (res.ok) {
@@ -137,7 +137,7 @@
         if (post.status === "published") return;
         isSaving = true;
         try {
-            const res = await fetch(`/api/posts/${postId}`, {
+            const res = await authFetch(`/api/posts/${postId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -167,7 +167,7 @@
         if (post.status === "published") return;
         isRegenerating = true;
         try {
-            const res = await fetch(`/api/posts/${postId}/generate`, {
+            const res = await authFetch(`/api/posts/${postId}/generate`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ type }),

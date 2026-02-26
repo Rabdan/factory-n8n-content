@@ -63,12 +63,14 @@ class PostScheduler {
                 FROM posts p
                 JOIN social_networks sn ON p.social_network_id = sn.id
                 WHERE p.status = 'approved'
-                AND p.publish_at <= NOW()
+                AND p.publish_at <= CURRENT_TIMESTAMP
                 AND sn.publishing_webhook_url IS NOT NULL
                 ORDER BY p.publish_at ASC
             `;
 
       const result = await db.query(query);
+
+      console.log(`Found posts for publication: ${result.rows.length}`);
 
       if (result.rows.length === 0) {
         logger.debug("No posts found for publication");

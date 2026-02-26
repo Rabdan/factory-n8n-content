@@ -29,7 +29,18 @@ async function authFetch(url: string, options: any = {}) {
         ...options.headers,
         'Authorization': authData.token ? `Bearer ${authData.token}` : ''
     };
-    return fetch(url, { ...options, headers });
+    
+    const response = await fetch(url, { ...options, headers });
+    
+    // Handle authentication errors
+    if (response.status === 401 || response.status === 403) {
+        // Clear auth data on authentication failure
+        auth.set({ user: null, token: null });
+        projects.set([]);
+        currentProject.set(null);
+    }
+    
+    return response;
 }
 
 export const projects = writable<any[]>([]);
@@ -153,3 +164,5 @@ export function addProject(projectName: string) {
         return [...p, newProject];
     });
 }
+
+export { authFetch };

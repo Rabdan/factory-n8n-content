@@ -2,11 +2,25 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const imageDownloader = require("../utils/imageDownloader");
+const { authenticateToken } = require("../middleware/auth");
 
 // Get posts for a project
-router.get("/", async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   const { projectId, start, end } = req.query; // Filter by date range
+  const userId = req.user.id;
   try {
+    // Verify user has access to this project
+    const projectAccess = await db.query(
+      `SELECT p.id FROM projects p
+       LEFT JOIN project_members pm ON p.id = pm.project_id
+       WHERE p.id = $1 AND (p.owner_id = $2 OR pm.user_id = $2)`,
+      [projectId, userId],
+    );
+
+    if (projectAccess.rows.length === 0) {
+      return res.status(403).json({ error: "Access denied to this project" });
+    }
+
     let query = `
             SELECT p.*, sn.name as social_network_name
             FROM posts p
@@ -28,7 +42,7 @@ router.get("/", async (req, res) => {
   }
 });
 // Get single post
-router.get("/:id", async (req, res) => {
+router.get("/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
     const result = await db.query(
@@ -50,7 +64,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 // Create post
-router.post("/", async (req, res) => {
+router.post("/", authenticateToken, async (req, res) => {
   const { project_id, social_network_id, publish_at, text_content, status } =
     req.body;
   try {
@@ -71,7 +85,7 @@ router.post("/", async (req, res) => {
 });
 
 // Update post
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const {
     text_content,
@@ -113,7 +127,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // Trigger Generation for a single post (text, image, or all)
-router.post("/:id/generate", async (req, res) => {
+router.post("/:id/generate", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { type } = req.body; // 'text', 'image', or 'all'
 
@@ -228,7 +242,7 @@ router.post("/:id/generate", async (req, res) => {
 /**
  * Delete a post by id
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
     const result = await db.query(

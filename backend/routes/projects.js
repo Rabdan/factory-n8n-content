@@ -8,13 +8,25 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const imageDownloader = require("../utils/imageDownloader");
+const { authenticateToken } = require("../middleware/auth");
 
-// Get all projects for (mock) user
-router.get("/", async (req, res) => {
-  // In a real app, filter by req.user.id
+// Get all projects for authenticated user
+router.get("/", authenticateToken, async (req, res) => {
   try {
+    // Get user from token (assuming JWT middleware sets req.user)
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    // Get projects where user is owner or member
     const result = await db.query(
-      "SELECT * FROM projects ORDER BY created_at DESC",
+      `SELECT DISTINCT p.* FROM projects p
+       LEFT JOIN project_members pm ON p.id = pm.project_id
+       WHERE p.owner_id = $1 OR pm.user_id = $1
+       ORDER BY p.created_at DESC`,
+      [userId],
     );
     res.json(result.rows);
   } catch (err) {
@@ -37,12 +49,16 @@ router.post("/", async (req, res) => {
 });
 
 // Get project details
-router.get("/:id", async (req, res) => {
+router.get("/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.id;
   try {
-    const project = await db.query("SELECT * FROM projects WHERE id = $1", [
-      id,
-    ]);
+    const project = await db.query(
+      `SELECT p.* FROM projects p
+       LEFT JOIN project_members pm ON p.id = pm.project_id
+       WHERE p.id = $1 AND (p.owner_id = $2 OR pm.user_id = $2)`,
+      [id, userId],
+    );
     const socialNetworks = await db.query(
       "SELECT * FROM social_networks WHERE project_id = $1",
       [id],
@@ -229,9 +245,22 @@ router.patch("/users/:userId/password", async (req, res) => {
 });
 
 // Get content plans for a project
-router.get("/:idproject/content-plans", async (req, res) => {
+router.get("/:idproject/content-plans", authenticateToken, async (req, res) => {
   const { idproject } = req.params;
+  const userId = req.user.id;
   try {
+    // Verify user has access to this project
+    const projectAccess = await db.query(
+      `SELECT p.id FROM projects p
+       LEFT JOIN project_members pm ON p.id = pm.project_id
+       WHERE p.id = $1 AND (p.owner_id = $2 OR pm.user_id = $2)`,
+      [idproject, userId],
+    );
+
+    if (projectAccess.rows.length === 0) {
+      return res.status(403).json({ error: "Access denied to this project" });
+    }
+
     const result = await db.query(
       "SELECT * FROM content_plans WHERE project_id = $1 ORDER BY created_at DESC",
       [idproject],
@@ -243,35 +272,18 @@ router.get("/:idproject/content-plans", async (req, res) => {
 });
 
 // Create or delete content plan (delete: if dates.isEmpty)
-router.post("/:idproject/content-plans", async (req, res) => {
-  const { idproject } = req.params;
-  const { id, name, prompt, dates, platforms, color } = req.body;
-  try {
-    if (id == 0) {
-      const result = await db.query(
-        "INSERT INTO content_plans (project_id, name, prompt, dates, platforms, color) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-        [
-          idproject,
-          name,
-          prompt,
-          JSON.stringify(dates || []),
-          JSON.stringify(platforms || []),
-          color || "#3b82f6",
-        ],
-      );
-      res.json(result.rows[0]);
-    } else {
-      if (dates.isEmpty) {
-        // Delete all posts for this plan
-        await db.query("DELETE FROM posts WHERE content_plan_id = $1", [id]);
-        // Delete the plan itself
-        await db.query("DELETE FROM content_plans WHERE id = $1", [id]);
-        res.json({ id });
-      } else {
+router.post(
+  "/:idproject/content-plans",
+  authenticateToken,
+  async (req, res) => {
+    const { idproject } = req.params;
+    const { id, name, prompt, dates, platforms, color } = req.body;
+    try {
+      if (id == 0) {
         const result = await db.query(
-          "UPDATE content_plans SET name = $2, prompt = $3, dates = $4, platforms = $5, color = $6 WHERE id = $1 RETURNING *",
+          "INSERT INTO content_plans (project_id, name, prompt, dates, platforms, color) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
           [
-            id,
+            idproject,
             name,
             prompt,
             JSON.stringify(dates || []),
@@ -280,139 +292,169 @@ router.post("/:idproject/content-plans", async (req, res) => {
           ],
         );
         res.json(result.rows[0]);
+      } else {
+        if (dates.isEmpty) {
+          // Delete all posts for this plan
+          await db.query("DELETE FROM posts WHERE content_plan_id = $1", [id]);
+          // Delete the plan itself
+          await db.query("DELETE FROM content_plans WHERE id = $1", [id]);
+          res.json({ id });
+        } else {
+          const result = await db.query(
+            "UPDATE content_plans SET name = $2, prompt = $3, dates = $4, platforms = $5, color = $6 WHERE id = $1 RETURNING *",
+            [
+              id,
+              name,
+              prompt,
+              JSON.stringify(dates || []),
+              JSON.stringify(platforms || []),
+              color || "#3b82f6",
+            ],
+          );
+          res.json(result.rows[0]);
+        }
       }
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  },
+);
 
 // Generate content for a plan
-router.post("/content-plans/:planId/generate", async (req, res) => {
-  const { planId } = req.params;
-  try {
-    // Get plan details
-    const planResult = await db.query(
-      "SELECT * FROM content_plans WHERE id = $1",
-      [planId],
-    );
+router.post(
+  "/content-plans/:planId/generate",
+  authenticateToken,
+  async (req, res) => {
+    const { planId } = req.params;
+    try {
+      // Get plan details
+      const planResult = await db.query(
+        "SELECT * FROM content_plans WHERE id = $1",
+        [planId],
+      );
 
-    if (planResult.rows.length === 0) {
-      return res.status(404).json({ error: "Plan not found" });
-    }
-    console.log(planResult.rows[0]);
-    const plan = planResult.rows[0];
-    const dates = plan.dates || [];
-    const platforms = plan.platforms || [];
-    const platformIds = platforms.map((p) => p.id);
+      if (planResult.rows.length === 0) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+      console.log(planResult.rows[0]);
+      const plan = planResult.rows[0];
+      const dates = plan.dates || [];
+      const platforms = plan.platforms || [];
+      const platformIds = platforms.map((p) => p.id);
 
-    // Get social networks for platforms
-    const networksResult = await db.query(
-      "SELECT * FROM social_networks WHERE id = ANY($1) AND project_id = $2",
-      [platformIds, plan.project_id],
-    );
+      // Get social networks for platforms
+      const networksResult = await db.query(
+        "SELECT * FROM social_networks WHERE id = ANY($1) AND project_id = $2",
+        [platformIds, plan.project_id],
+      );
 
-    const networks = networksResult.rows;
+      const networks = networksResult.rows;
 
-    if (networks.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "No valid social networks found for this plan" });
-    }
+      if (networks.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "No valid social networks found for this plan" });
+      }
 
-    console.log(
-      `Starting generation for plan ${planId}: ${dates.length} dates x ${networks.length} networks`,
-    );
+      console.log(
+        `Starting generation for plan ${planId}: ${dates.length} dates x ${networks.length} networks`,
+      );
 
-    let totalGenerated = 0;
+      let totalGenerated = 0;
 
-    // Generate content for each date and network combination
-    for (const date of dates) {
-      for (const network of networks) {
-        if (network.generation_webhook_url) {
-          // Check if post already exists for this date and network
-          const existingPostResult = await db.query(
-            `SELECT * FROM posts
+      // Generate content for each date and network combination
+      for (const date of dates) {
+        for (const network of networks) {
+          if (network.generation_webhook_url) {
+            // Check if post already exists for this date and network
+            const existingPostResult = await db.query(
+              `SELECT * FROM posts
             WHERE content_plan_id = $1
             AND social_network_id = $2
             AND DATE(publish_at) = $3
             AND status IN ('approved', 'published')`,
-            [planId, network.id, date],
-          );
-
-          if (existingPostResult.rows.length > 0) {
-            console.log(
-              `Skipping generation for ${date} - ${network.name}: post already exists with approved/published status`,
+              [planId, network.id, date],
             );
-            continue;
-          }
 
-          // Delete posts without status ('approved', 'published')
-          await db.query(
-            `DELETE FROM posts
+            if (existingPostResult.rows.length > 0) {
+              console.log(
+                `Skipping generation for ${date} - ${network.name}: post already exists with approved/published status`,
+              );
+              continue;
+            }
+
+            // Delete posts without status ('approved', 'published')
+            await db.query(
+              `DELETE FROM posts
             WHERE content_plan_id = $1
             AND social_network_id = $2
             AND DATE(publish_at) = $3
             AND status NOT IN ('approved', 'published')`,
-            [planId, network.id, date],
-          );
-
-          const publishTime =
-            network.default_publish_time ||
-            platformConfig?.publishTime ||
-            "10:00:00";
-          const publishAt = new Date(`${date}T${publishTime}`);
-
-          const sheader = `[${network.name} Settings]`;
-          const escapedHeader = sheader.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const regex = new RegExp(
-            `${escapedHeader}\\s*([\\s\\S]*?)(?=\\n\\[|$)`,
-            "i",
-          );
-          const match = plan.prompt.match(regex);
-          const textprompt = match ? match[1].trim() : "create a simple post";
-          // Call webhook to generate content
-          const webhookResponse = await fetch(network.generation_webhook_url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              prompt: textprompt,
-              network_name: network.name,
-              publish_date: date,
-            }),
-          });
-
-          if (!webhookResponse.ok) {
-            throw new Error(
-              `Webhook failed for ${network.name}: ${webhookResponse.status} ${webhookResponse.statusText}`,
+              [planId, network.id, date],
             );
-          }
 
-          const webhookResult = await webhookResponse.json();
-          console.log(`Webhook response for ${network.name}:`, webhookResult);
+            const publishTime =
+              network.default_publish_time ||
+              platformConfig?.publishTime ||
+              "10:00:00";
+            const publishAt = new Date(`${date}T${publishTime}`);
 
-          let mediaFiles = [];
-
-          // Download images from image_url(s) if provided
-          if (webhookResult[0].image_url) {
-            const imageUrls = Array.isArray(webhookResult[0].image_url)
-              ? webhookResult[0].image_url
-              : [webhookResult[0].image_url];
-            const uploadDir = path.join(__dirname, "..", "data", "uploads");
-            const downloadedFiles = await imageDownloader.downloadImages(
-              imageUrls,
-              uploadDir,
-              network.name,
+            const sheader = `[${network.name} Settings]`;
+            const escapedHeader = sheader.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&",
             );
-            mediaFiles.push(...downloadedFiles);
-            if (downloadedFiles.length > 0) {
-              console.log(`Downloaded images: ${downloadedFiles.join(", ")}`);
+            const regex = new RegExp(
+              `${escapedHeader}\\s*([\\s\\S]*?)(?=\\n\\[|$)`,
+              "i",
+            );
+            const match = plan.prompt.match(regex);
+            const textprompt = match ? match[1].trim() : "create a simple post";
+            // Call webhook to generate content
+            const webhookResponse = await fetch(
+              network.generation_webhook_url,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  prompt: textprompt,
+                  network_name: network.name,
+                  publish_date: date,
+                }),
+              },
+            );
+
+            if (!webhookResponse.ok) {
+              throw new Error(
+                `Webhook failed for ${network.name}: ${webhookResponse.status} ${webhookResponse.statusText}`,
+              );
             }
-          }
 
-          // Create new post
-          const createResult = await db.query(
-            `INSERT INTO posts (
+            const webhookResult = await webhookResponse.json();
+            console.log(`Webhook response for ${network.name}:`, webhookResult);
+
+            let mediaFiles = [];
+
+            // Download images from image_url(s) if provided
+            if (webhookResult[0].image_url) {
+              const imageUrls = Array.isArray(webhookResult[0].image_url)
+                ? webhookResult[0].image_url
+                : [webhookResult[0].image_url];
+              const uploadDir = path.join(__dirname, "..", "data", "uploads");
+              const downloadedFiles = await imageDownloader.downloadImages(
+                imageUrls,
+                uploadDir,
+                network.name,
+              );
+              mediaFiles.push(...downloadedFiles);
+              if (downloadedFiles.length > 0) {
+                console.log(`Downloaded images: ${downloadedFiles.join(", ")}`);
+              }
+            }
+
+            // Create new post
+            const createResult = await db.query(
+              `INSERT INTO posts (
                 project_id,
                 social_network_id,
                 content_plan_id,
@@ -422,43 +464,44 @@ router.post("/content-plans/:planId/generate", async (req, res) => {
                 tags,
                 status
               ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft') RETURNING *`,
-            [
-              plan.project_id,
-              network.id,
-              planId,
-              publishAt,
-              webhookResult[0].caption ||
-                webhookResult[0].text_content ||
-                plan.prompt,
-              mediaFiles.length > 0 ? JSON.stringify(mediaFiles) : null,
-              webhookResult[0].tags
-                ? JSON.stringify(webhookResult[0].tags)
-                : null,
-            ],
-          );
-          console.log(
-            `Created new post for ${network.name}`,
-            createResult.rows[0],
-          );
+              [
+                plan.project_id,
+                network.id,
+                planId,
+                publishAt,
+                webhookResult[0].caption ||
+                  webhookResult[0].text_content ||
+                  plan.prompt,
+                mediaFiles.length > 0 ? JSON.stringify(mediaFiles) : null,
+                webhookResult[0].tags
+                  ? JSON.stringify(webhookResult[0].tags)
+                  : null,
+              ],
+            );
+            console.log(
+              `Created new post for ${network.name}`,
+              createResult.rows[0],
+            );
 
-          totalGenerated++;
-        } else {
-          console.log(`No webhook configured for ${network.name}`);
+            totalGenerated++;
+          } else {
+            console.log(`No webhook configured for ${network.name}`);
+          }
         }
       }
-    }
 
-    res.json({
-      success: true,
-      message: `Generation completed for plan ${planId}`,
-      generated_dates: dates.length,
-      networks: networks.length,
-      total_generated: totalGenerated,
-    });
-  } catch (err) {
-    console.error("Generation failed:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
+      res.json({
+        success: true,
+        message: `Generation completed for plan ${planId}`,
+        generated_dates: dates.length,
+        networks: networks.length,
+        total_generated: totalGenerated,
+      });
+    } catch (err) {
+      console.error("Generation failed:", err);
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
 
 module.exports = router;

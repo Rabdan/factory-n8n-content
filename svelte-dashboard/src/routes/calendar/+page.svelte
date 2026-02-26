@@ -17,7 +17,7 @@
     import { toDateKey } from "$lib/utils/date";
     import DatePicker from "$lib/components/DatePicker.svelte";
     import AlertDialog from "$lib/components/AlertDialog.svelte";
-    import { currentProject } from "$lib/stores";
+    import { currentProject, authFetch } from "$lib/stores";
     import { goto } from "$app/navigation";
 
     // --- Delete Plan Logic ---
@@ -44,11 +44,11 @@
         isDeletingPlan = true;
         try {
             // Delete all posts for this plan
-            await fetch(`/api/posts?content_plan_id=${newPlan.id}`, {
+            await authFetch(`/api/posts?content_plan_id=${newPlan.id}`, {
                 method: "DELETE",
             });
             // Delete the plan itself
-            await fetch(`/api/projects/${$currentProject.id}/content-plans`, {
+            await authFetch(`/api/projects/${$currentProject.id}/content-plans`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -82,7 +82,7 @@
     async function fetchPosts() {
         if (!$currentProject) return;
         try {
-            const res = await fetch(
+            const res = await authFetch(
                 `/api/posts?projectId=${$currentProject.id}`,
             );
             if (res.ok) posts = await res.json();
@@ -94,7 +94,7 @@
     async function fetchContentPlans() {
         if (!$currentProject) return;
         try {
-            const res = await fetch(
+            const res = await authFetch(
                 `/api/projects/${$currentProject.id}/content-plans`,
             );
             if (res.ok) {
@@ -386,7 +386,7 @@
         };
 
         try {
-            const res = await fetch(
+            const res = await authFetch(
                 `/api/projects/${$currentProject.id}/content-plans`,
                 {
                     method: "POST",
@@ -415,7 +415,7 @@
         isPlanGenerating = true;
         planGenerationStatus = `Generating content... This can take a minute.`;
         try {
-            const res = await fetch(
+            const res = await authFetch(
                 `/api/projects/content-plans/${planId}/generate`,
                 {
                     method: "POST",
@@ -590,7 +590,7 @@
         genStatus = "Contacting AI, this may take a moment...";
 
         try {
-            const res = await fetch(
+            const res = await authFetch(
                 `/api/projects/${$currentProject.id}/bulk-generate`,
                 {
                     method: "POST",

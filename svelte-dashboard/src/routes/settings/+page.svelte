@@ -9,7 +9,7 @@
         X,
         Edit,
     } from "@lucide/svelte";
-    import { currentProject, selectProject } from "$lib/stores";
+    import { currentProject, selectProject, authFetch } from "$lib/stores";
 
     const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -31,6 +31,7 @@
         generation_webhook_url: "",
         default_publish_time: "10:00",
         default_prompt: "",
+        logo_url: "",
     });
 
     let logoFile: File | null = $state(null);
@@ -49,7 +50,7 @@
         addMemberLoading = true;
         addMemberRole = "member";
         try {
-            const response = await fetch(
+            const response = await authFetch(
                 `/api/projects/${$currentProject.id}/add-member`,
                 {
                     method: "POST",
@@ -84,7 +85,7 @@
         if (!$currentProject) return;
         if (!confirm("Are you sure you want to remove this member?")) return;
         try {
-            const response = await fetch(
+            const response = await authFetch(
                 `/api/projects/${$currentProject.id}/members/${userId}`,
                 {
                     method: "DELETE",
@@ -110,7 +111,7 @@
         passwordChangeLoading = true;
         passwordChangeMessage = "";
         try {
-            const response = await fetch(
+            const response = await authFetch(
                 `/api/projects/users/${userId}/password`,
                 {
                     method: "PATCH",
@@ -145,13 +146,14 @@
         isSaving = true;
 
         try {
-            let logo_url = "";
+            const isEditing = editingNetworkId !== null;
+            let logo_url = isEditing ? newNetwork.logo_url : "";
             if (logoFile) {
                 const formData = new FormData();
                 formData.append("file", logoFile);
                 formData.append("project_id", $currentProject.id.toString());
 
-                const uploadRes = await fetch("/api/upload", {
+                const uploadRes = await authFetch("/api/upload", {
                     method: "POST",
                     body: formData,
                 });
@@ -161,13 +163,12 @@
                 }
             }
 
-            const isEditing = editingNetworkId !== null;
             const url = isEditing
                 ? `/api/projects/social-networks/${editingNetworkId}`
                 : `/api/projects/${$currentProject.id}/social-networks`;
             const method = isEditing ? "PUT" : "POST";
 
-            const response = await fetch(url, {
+            const response = await authFetch(url, {
                 method,
                 headers: {
                     "Content-Type": "application/json",
@@ -203,7 +204,7 @@
             return;
 
         try {
-            const response = await fetch(
+            const response = await authFetch(
                 `/api/projects/social-networks/${networkId}`,
                 {
                     method: "DELETE",
@@ -230,6 +231,7 @@
             generation_webhook_url: "",
             default_publish_time: "10:00",
             default_prompt: "",
+            logo_url: "",
         };
         logoFile = null;
         logoPreview = "";
@@ -243,6 +245,7 @@
             generation_webhook_url: network.generation_webhook_url,
             default_publish_time: network.default_publish_time,
             default_prompt: network.default_prompt,
+            logo_url: network.logo_url,
         };
         logoPreview =
             network.logo_url && !network.logo_url.startsWith("http")
