@@ -10,6 +10,7 @@ services:
       - DATABASE_URL=postgres://user:password@db:5432/contentfactory
       - PORT=3060
     volumes:
+      - ./backend:/app
       - ./data/uploads:/app/data/uploads
     command: npm start
     depends_on:
