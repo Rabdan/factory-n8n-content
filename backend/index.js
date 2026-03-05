@@ -104,16 +104,19 @@ app.post(
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-    const { project_id, strategy_id, campaign_id } = req.body;
+    const { project_id, strategy_id, campaign_id, content_plan_id, post_id } =
+      req.body;
 
     try {
       const result = await pool.query(
         // Using direct pool here or import db
-        "INSERT INTO uploads (project_id, strategy_id, campaign_id, filename, filepath, file_type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+        "INSERT INTO uploads (project_id, strategy_id, campaign_id, content_plan_id, post_id, filename, filepath, file_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
         [
           project_id || null,
           strategy_id || null,
           campaign_id || null,
+          content_plan_id || null,
+          post_id || null,
           req.file.originalname,
           req.file.filename,
           req.file.mimetype,

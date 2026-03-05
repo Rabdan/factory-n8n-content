@@ -12,6 +12,7 @@
         LogOut,
         Plus,
         Brain,
+        ChevronLeft,
     } from "@lucide/svelte";
     import {
         projects,
@@ -22,7 +23,7 @@
     } from "$lib/stores";
     import { goto } from "$app/navigation";
 
-    let { isDark, toggleTheme } = $props();
+    let { isDark, toggleTheme, toggleSidebar } = $props();
 
     function logout() {
         auth.set({ user: null, token: null });
@@ -31,8 +32,8 @@
 
     const links = [
         { href: "/", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/strategylm", label: "Strategy LM", icon: Brain },
-        { href: "/calendar", label: "Content calendar", icon: Calendar },
+        { href: "/strategylm", label: "Strategy", icon: Brain },
+        { href: "/calendar", label: "Calendar", icon: Calendar },
         { href: "/analytics", label: "Analytics", icon: BarChart3 },
         { href: "/files", label: "Training", icon: FileText },
         { href: "/settings", label: "Settings", icon: Settings },
@@ -57,8 +58,15 @@
 </script>
 
 <aside
-    class="w-56 border-r border-border bg-muted/20 dark:bg-muted/10 h-full p-3 flex flex-col gap-3 transition-colors duration-300 overflow-hidden"
+    class="relative w-56 border-r border-border bg-muted/20 dark:bg-muted/10 h-full p-3 flex flex-col gap-3 transition-colors duration-300 overflow-hidden"
 >
+    <button
+        class="absolute -right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full border border-border bg-card text-foreground shadow-sm hover:bg-muted"
+        onclick={toggleSidebar}
+        aria-label="Hide sidebar"
+    >
+        <ChevronLeft size={14} class="mx-auto" />
+    </button>
     <div class="font-bold text-lg px-2 mb-1 flex items-center gap-3">
         <div
             class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground shadow-sm"

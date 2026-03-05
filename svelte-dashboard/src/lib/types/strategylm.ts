@@ -49,6 +49,8 @@ export interface SourceFile {
   project_id: number;
   strategy_id: number | null;
   campaign_id: number | null;
+  content_plan_id?: number | null;
+  post_id?: number | null;
   filename: string;
   filepath: string;
   file_type: string | null;
@@ -60,6 +62,8 @@ export interface KnowledgeUrl {
   project_id: number;
   strategy_id: number | null;
   campaign_id: number | null;
+  content_plan_id?: number | null;
+  post_id?: number | null;
   url: string;
   title: string | null;
   created_at: string;

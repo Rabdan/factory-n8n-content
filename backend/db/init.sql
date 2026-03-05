@@ -139,6 +139,8 @@ CREATE TABLE IF NOT EXISTS uploads (
     project_id INTEGER REFERENCES projects(id),
     strategy_id INTEGER REFERENCES strategies(id) ON DELETE SET NULL,
     campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+    content_plan_id INTEGER REFERENCES content_plans(id) ON DELETE SET NULL,
+    post_id INTEGER REFERENCES posts(id) ON DELETE SET NULL,
     filename VARCHAR(255) NOT NULL,
     filepath VARCHAR(255) NOT NULL,
     file_type VARCHAR(50),
@@ -151,6 +153,8 @@ CREATE TABLE IF NOT EXISTS knowledge_urls (
     project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
     strategy_id INTEGER REFERENCES strategies(id) ON DELETE SET NULL,
     campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+    content_plan_id INTEGER REFERENCES content_plans(id) ON DELETE SET NULL,
+    post_id INTEGER REFERENCES posts(id) ON DELETE SET NULL,
     url TEXT NOT NULL,
     title VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -173,6 +177,10 @@ CREATE INDEX IF NOT EXISTS idx_campaigns_strategy_id ON campaigns(strategy_id);
 CREATE INDEX IF NOT EXISTS idx_content_plans_campaign_id ON content_plans(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_strategy_campaign ON uploads(strategy_id, campaign_id);
 CREATE INDEX IF NOT EXISTS idx_knowledge_urls_strategy_campaign ON knowledge_urls(strategy_id, campaign_id);
+CREATE INDEX IF NOT EXISTS idx_uploads_content_plan ON uploads(content_plan_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_urls_content_plan ON knowledge_urls(content_plan_id);
+CREATE INDEX IF NOT EXISTS idx_uploads_post ON uploads(post_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_urls_post ON knowledge_urls(post_id);
 CREATE INDEX IF NOT EXISTS idx_strategylm_chat_branch ON strategylm_chat_messages(project_id, branch_type, branch_id, created_at);
 
 -- Seed Data

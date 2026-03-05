@@ -162,33 +162,105 @@
         );
     });
 
+    let knowledgeBreadcrumbs = $derived.by(() => {
+        const strategyCrumb = strategies.find(
+            (item) => item.id === activeContext.strategyId,
+        );
+        const campaignCrumb = campaigns.find(
+            (item) => item.id === activeContext.campaignId,
+        );
+        const planCrumb = plans.find(
+            (item) => item.id === activeContext.planId,
+        );
+        return { strategyCrumb, campaignCrumb, planCrumb };
+    });
+
     let activeLinkedFiles = $derived.by(() =>
         files.filter((item) => {
-            if (!activeContext.strategyId && !activeContext.campaignId)
-                return false;
-            const byCampaign =
-                activeContext.campaignId &&
-                item.campaign_id === activeContext.campaignId;
-            const byStrategy =
-                activeContext.strategyId &&
-                item.strategy_id === activeContext.strategyId;
-            return !!(byCampaign || byStrategy);
+            if (!activeNode) return false;
+            if (activeNode.type === "strategy") {
+                return item.strategy_id === activeNode.id;
+            }
+            if (activeNode.type === "campaign") {
+                return item.campaign_id === activeNode.id;
+            }
+            if (activeNode.type === "plan") {
+                return item.content_plan_id === activeNode.id;
+            }
+            if (activeNode.type === "post") {
+                return item.post_id === activeNode.id;
+            }
+            return false;
         }),
     );
 
     let activeLinkedUrls = $derived.by(() =>
         urls.filter((item) => {
-            if (!activeContext.strategyId && !activeContext.campaignId)
-                return false;
-            const byCampaign =
-                activeContext.campaignId &&
-                item.campaign_id === activeContext.campaignId;
-            const byStrategy =
-                activeContext.strategyId &&
-                item.strategy_id === activeContext.strategyId;
-            return !!(byCampaign || byStrategy);
+            if (!activeNode) return false;
+            if (activeNode.type === "strategy") {
+                return item.strategy_id === activeNode.id;
+            }
+            if (activeNode.type === "campaign") {
+                return item.campaign_id === activeNode.id;
+            }
+            if (activeNode.type === "plan") {
+                return item.content_plan_id === activeNode.id;
+            }
+            if (activeNode.type === "post") {
+                return item.post_id === activeNode.id;
+            }
+            return false;
         }),
     );
+
+    function getAttachmentTarget() {
+        if (!activeNode) {
+            return {
+                strategy_id: null,
+                campaign_id: null,
+                content_plan_id: null,
+                post_id: null,
+            };
+        }
+        if (activeNode.type === "strategy") {
+            return {
+                strategy_id: activeNode.id,
+                campaign_id: null,
+                content_plan_id: null,
+                post_id: null,
+            };
+        }
+        if (activeNode.type === "campaign") {
+            return {
+                strategy_id: null,
+                campaign_id: activeNode.id,
+                content_plan_id: null,
+                post_id: null,
+            };
+        }
+        if (activeNode.type === "plan") {
+            return {
+                strategy_id: null,
+                campaign_id: null,
+                content_plan_id: activeNode.id,
+                post_id: null,
+            };
+        }
+        if (activeNode.type === "post") {
+            return {
+                strategy_id: null,
+                campaign_id: null,
+                content_plan_id: null,
+                post_id: activeNode.id,
+            };
+        }
+        return {
+            strategy_id: null,
+            campaign_id: null,
+            content_plan_id: null,
+            post_id: null,
+        };
+    }
 
     function escapeRegExp(value: string) {
         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -277,7 +349,7 @@
                           id: generateId(),
                           role: "assistant",
                           content:
-                              "StrategyLM is ready. Select a Strategy, Campaign, or Plan and I will use that context.",
+                              "Select a Strategy, Campaign, or Plan and I will use that context.",
                       },
                   ];
     }
@@ -716,16 +788,18 @@
                 const form = new FormData();
                 form.append("file", file);
                 form.append("project_id", String($currentProject.id));
-                if (activeContext.strategyId)
+                const target = getAttachmentTarget();
+                if (target.strategy_id)
+                    form.append("strategy_id", String(target.strategy_id));
+                if (target.campaign_id)
+                    form.append("campaign_id", String(target.campaign_id));
+                if (target.content_plan_id)
                     form.append(
-                        "strategy_id",
-                        String(activeContext.strategyId),
+                        "content_plan_id",
+                        String(target.content_plan_id),
                     );
-                if (activeContext.campaignId)
-                    form.append(
-                        "campaign_id",
-                        String(activeContext.campaignId),
-                    );
+                if (target.post_id)
+                    form.append("post_id", String(target.post_id));
 
                 const res = await authFetch("/api/upload", {
                     method: "POST",
@@ -746,24 +820,35 @@
     }
 
     async function toggleFileLink(file: SourceFile) {
-        if (!activeContext.strategyId && !activeContext.campaignId) return;
+        if (
+            !activeContext.strategyId &&
+            !activeContext.campaignId &&
+            !activeContext.planId
+        )
+            return;
 
         const linkedToActive =
-            file.campaign_id === activeContext.campaignId ||
-            file.strategy_id === activeContext.strategyId;
+            (activeNode?.type === "strategy" &&
+                file.strategy_id === activeNode.id) ||
+            (activeNode?.type === "campaign" &&
+                file.campaign_id === activeNode.id) ||
+            (activeNode?.type === "plan" &&
+                file.content_plan_id === activeNode.id) ||
+            (activeNode?.type === "post" && file.post_id === activeNode.id);
 
+        const target = getAttachmentTarget();
         const res = await authFetch(
             `/api/strategylm/sources/files/${file.id}`,
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    strategy_id: linkedToActive
+                    strategy_id: linkedToActive ? null : target.strategy_id,
+                    campaign_id: linkedToActive ? null : target.campaign_id,
+                    content_plan_id: linkedToActive
                         ? null
-                        : activeContext.strategyId,
-                    campaign_id: linkedToActive
-                        ? null
-                        : activeContext.campaignId,
+                        : target.content_plan_id,
+                    post_id: linkedToActive ? null : target.post_id,
                 }),
             },
         );
@@ -781,8 +866,10 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 project_id: $currentProject.id,
-                strategy_id: activeContext.strategyId,
-                campaign_id: activeContext.campaignId,
+                strategy_id: getAttachmentTarget().strategy_id,
+                campaign_id: getAttachmentTarget().campaign_id,
+                content_plan_id: getAttachmentTarget().content_plan_id,
+                post_id: getAttachmentTarget().post_id,
                 url: newUrlInput.trim(),
             }),
         });
@@ -794,24 +881,35 @@
     }
 
     async function toggleUrlLink(item: KnowledgeUrl) {
-        if (!activeContext.strategyId && !activeContext.campaignId) return;
+        if (
+            !activeContext.strategyId &&
+            !activeContext.campaignId &&
+            !activeContext.planId
+        )
+            return;
 
         const linkedToActive =
-            item.campaign_id === activeContext.campaignId ||
-            item.strategy_id === activeContext.strategyId;
+            (activeNode?.type === "strategy" &&
+                item.strategy_id === activeNode.id) ||
+            (activeNode?.type === "campaign" &&
+                item.campaign_id === activeNode.id) ||
+            (activeNode?.type === "plan" &&
+                item.content_plan_id === activeNode.id) ||
+            (activeNode?.type === "post" && item.post_id === activeNode.id);
 
+        const target = getAttachmentTarget();
         const res = await authFetch(
             `/api/strategylm/knowledge-urls/${item.id}`,
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    strategy_id: linkedToActive
+                    strategy_id: linkedToActive ? null : target.strategy_id,
+                    campaign_id: linkedToActive ? null : target.campaign_id,
+                    content_plan_id: linkedToActive
                         ? null
-                        : activeContext.strategyId,
-                    campaign_id: linkedToActive
-                        ? null
-                        : activeContext.campaignId,
+                        : target.content_plan_id,
+                    post_id: linkedToActive ? null : target.post_id,
                 }),
             },
         );
@@ -1162,7 +1260,7 @@
                 class="p-4 border-b border-border flex items-center justify-between"
             >
                 <div>
-                    <h2 class="text-sm font-semibold">Document Mode</h2>
+                    <h2 class="text-sm font-semibold">Marketing Agent</h2>
                     <p class="text-xs text-muted-foreground">
                         Markdown workspace for the active node
                     </p>
@@ -1249,9 +1347,37 @@
         >
             <div class="p-4 border-b border-border">
                 <h2 class="text-sm font-semibold">Knowledge Base</h2>
-                <p class="text-xs text-muted-foreground">
-                    Files and URLs linked to active strategy/campaign
-                </p>
+                <div
+                    class="mt-2 text-xs text-muted-foreground flex flex-wrap gap-1"
+                >
+                    {#if knowledgeBreadcrumbs.strategyCrumb}
+                        <span class="text-[10px] text-muted-foreground">
+                            (Strategy)
+                        </span>
+                        <span>
+                            {knowledgeBreadcrumbs.strategyCrumb.title}
+                        </span>
+                    {/if}
+                    {#if knowledgeBreadcrumbs.campaignCrumb}
+                        <span class="text-muted-foreground">></span>
+                        <span class="text-[10px] text-muted-foreground">
+                            (Campaign)
+                        </span>
+                        <span>
+                            {knowledgeBreadcrumbs.campaignCrumb.title}
+                        </span>
+                    {/if}
+                    {#if knowledgeBreadcrumbs.planCrumb}
+                        <span class="text-muted-foreground">></span>
+                        <span class="text-[10px] text-muted-foreground">
+                            (Content Plan)
+                        </span>
+                        <span>
+                            {knowledgeBreadcrumbs.planCrumb.title ||
+                                "Untitled Plan"}
+                        </span>
+                    {/if}
+                </div>
             </div>
 
             <div class="p-4 border-b border-border space-y-2">
@@ -1293,14 +1419,8 @@
                         Files
                     </h3>
                     <div class="space-y-2">
-                        {#each files as file}
-                            {@const linked =
-                                (activeContext.campaignId &&
-                                    file.campaign_id ===
-                                        activeContext.campaignId) ||
-                                (activeContext.strategyId &&
-                                    file.strategy_id ===
-                                        activeContext.strategyId)}
+                        {#each activeLinkedFiles as file}
+                            {@const linked = true}
                             <button
                                 class={`w-full text-left rounded-md border px-2.5 py-2 text-xs transition-colors ${linked ? "border-emerald-500/60 bg-emerald-500/10" : "border-border bg-card hover:bg-muted"}`}
                                 onclick={() => toggleFileLink(file)}
@@ -1315,9 +1435,9 @@
                                 </div>
                             </button>
                         {/each}
-                        {#if files.length === 0}
+                        {#if activeLinkedFiles.length === 0}
                             <p class="text-xs text-muted-foreground">
-                                No files uploaded.
+                                No files linked to this document.
                             </p>
                         {/if}
                     </div>
@@ -1330,14 +1450,8 @@
                         URLs
                     </h3>
                     <div class="space-y-2">
-                        {#each urls as item}
-                            {@const linked =
-                                (activeContext.campaignId &&
-                                    item.campaign_id ===
-                                        activeContext.campaignId) ||
-                                (activeContext.strategyId &&
-                                    item.strategy_id ===
-                                        activeContext.strategyId)}
+                        {#each activeLinkedUrls as item}
+                            {@const linked = true}
                             <button
                                 class={`w-full text-left rounded-md border px-2.5 py-2 text-xs transition-colors ${linked ? "border-emerald-500/60 bg-emerald-500/10" : "border-border bg-card hover:bg-muted"}`}
                                 onclick={() => toggleUrlLink(item)}
@@ -1352,9 +1466,9 @@
                                 </div>
                             </button>
                         {/each}
-                        {#if urls.length === 0}
+                        {#if activeLinkedUrls.length === 0}
                             <p class="text-xs text-muted-foreground">
-                                No URLs saved.
+                                No URLs linked to this document.
                             </p>
                         {/if}
                     </div>

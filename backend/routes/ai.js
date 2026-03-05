@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const { authenticateToken } = require("../middleware/auth");
+const fs = require("fs");
+const path = require("path");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -242,6 +244,65 @@ async function updateBranchDocument(tableName, branchId, updatedDocument) {
   return result.rows[0] || null;
 }
 
+function isTextLikeFile(filename, fileType) {
+  const name = String(filename || "").toLowerCase();
+  if (fileType && String(fileType).startsWith("text/")) return true;
+  return (
+    name.endsWith(".txt") ||
+    name.endsWith(".md") ||
+    name.endsWith(".json") ||
+    name.endsWith(".csv")
+  );
+}
+
+function readFileSafe(filePath, maxBytes = 200 * 1024) {
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile()) return null;
+    const content = fs.readFileSync(filePath, "utf8");
+    return content.slice(0, maxBytes);
+  } catch {
+    return null;
+  }
+}
+
+function enrichFilesWithContent(files) {
+  const uploadDir = path.join(__dirname, "..", "data", "uploads");
+  return (files || []).map((file) => {
+    if (!isTextLikeFile(file.filename, file.file_type)) {
+      return { ...file, content: null };
+    }
+    const fullPath = path.join(uploadDir, file.filepath);
+    const content = readFileSafe(fullPath);
+    return { ...file, content };
+  });
+}
+
+function loadAiSkillsContext() {
+  const skillsDir = path.join(__dirname, "..", "data", "aiskills");
+  if (!fs.existsSync(skillsDir)) return "";
+  try {
+    const entries = fs.readdirSync(skillsDir);
+    const chunks = [];
+    for (const entry of entries) {
+      const fullPath = path.join(skillsDir, entry);
+      try {
+        const stat = fs.statSync(fullPath);
+        if (!stat.isFile()) continue;
+        const content = readFileSafe(fullPath, 50 * 1024);
+        if (!content) continue;
+        chunks.push(`### ${entry}\n${content}`);
+      } catch {
+        continue;
+      }
+    }
+    if (chunks.length === 0) return "";
+    return `\n\nAI Skills Context:\n${chunks.join("\n\n")}`;
+  } catch {
+    return "";
+  }
+}
+
 router.post("/process", authenticateToken, async (req, res) => {
   const {
     project_id,
@@ -292,6 +353,10 @@ router.post("/process", authenticateToken, async (req, res) => {
       branch.strategyId,
       branch.campaignId,
     );
+    const attachedFiles = enrichFilesWithContent(
+      attached_documents?.files || [],
+    );
+    const attachedUrls = attached_documents?.urls || [];
     const historyBefore = await getBranchHistory(
       projectId,
       branchType,
@@ -320,7 +385,10 @@ router.post("/process", authenticateToken, async (req, res) => {
         files: linkedDocs.fileDocs,
         urls: linkedDocs.urlDocs,
       },
-      attached_documents,
+      attached_documents: {
+        files: attachedFiles,
+        urls: attachedUrls,
+      },
     };
 
     let assistantMessage = "Document updated.";
@@ -343,7 +411,7 @@ Your task:
    - assistant_message: string
    - changes_summary: string[]
 
-Use context stack and attached docs, but focus on improving current document.`;
+Use context stack and attached docs, but focus on improving current document.${loadAiSkillsContext()}`;
 
       const chatMessages = [
         { role: "system", content: systemPrompt },

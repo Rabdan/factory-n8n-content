@@ -650,14 +650,21 @@ router.patch("/sources/files/:id", async (req, res) => {
       req.body.strategy_id === null ? null : asInt(req.body.strategy_id);
     const campaignId =
       req.body.campaign_id === null ? null : asInt(req.body.campaign_id);
+    const contentPlanId =
+      req.body.content_plan_id === null
+        ? null
+        : asInt(req.body.content_plan_id);
+    const postId = req.body.post_id === null ? null : asInt(req.body.post_id);
 
     const result = await db.query(
       `UPDATE uploads
        SET strategy_id = $1,
-           campaign_id = $2
-       WHERE id = $3
+           campaign_id = $2,
+           content_plan_id = $3,
+           post_id = $4
+       WHERE id = $5
        RETURNING *`,
-      [strategyId, campaignId, id],
+      [strategyId, campaignId, contentPlanId, postId, id],
     );
 
     res.json(result.rows[0]);
@@ -667,7 +674,15 @@ router.patch("/sources/files/:id", async (req, res) => {
 });
 
 router.post("/knowledge-urls", async (req, res) => {
-  const { project_id, strategy_id, campaign_id, url, title } = req.body;
+  const {
+    project_id,
+    strategy_id,
+    campaign_id,
+    content_plan_id,
+    post_id,
+    url,
+    title,
+  } = req.body;
   const projectId = asInt(project_id);
 
   if (!projectId || !url || !String(url).trim()) {
@@ -688,12 +703,26 @@ router.post("/knowledge-urls", async (req, res) => {
       campaign_id === null || campaign_id === undefined
         ? null
         : asInt(campaign_id);
+    const contentPlanId =
+      content_plan_id === null || content_plan_id === undefined
+        ? null
+        : asInt(content_plan_id);
+    const postId =
+      post_id === null || post_id === undefined ? null : asInt(post_id);
 
     const result = await db.query(
-      `INSERT INTO knowledge_urls (project_id, strategy_id, campaign_id, url, title)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO knowledge_urls (project_id, strategy_id, campaign_id, content_plan_id, post_id, url, title)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [projectId, strategyId, campaignId, String(url).trim(), title || null],
+      [
+        projectId,
+        strategyId,
+        campaignId,
+        contentPlanId,
+        postId,
+        String(url).trim(),
+        title || null,
+      ],
     );
 
     res.status(201).json(result.rows[0]);
@@ -733,20 +762,32 @@ router.patch("/knowledge-urls/:id", async (req, res) => {
       req.body.campaign_id === null
         ? null
         : asInt(req.body.campaign_id ?? existing.rows[0].campaign_id);
+    const contentPlanId =
+      req.body.content_plan_id === null
+        ? null
+        : asInt(req.body.content_plan_id ?? existing.rows[0].content_plan_id);
+    const postId =
+      req.body.post_id === null
+        ? null
+        : asInt(req.body.post_id ?? existing.rows[0].post_id);
 
     const result = await db.query(
       `UPDATE knowledge_urls
        SET url = COALESCE($1, url),
            title = COALESCE($2, title),
            strategy_id = $3,
-           campaign_id = $4
-       WHERE id = $5
+           campaign_id = $4,
+           content_plan_id = $5,
+           post_id = $6
+       WHERE id = $7
        RETURNING *`,
       [
         req.body.url ? String(req.body.url).trim() : null,
         req.body.title ?? null,
         strategyId,
         campaignId,
+        contentPlanId,
+        postId,
         id,
       ],
     );
