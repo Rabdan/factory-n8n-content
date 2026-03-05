@@ -65,17 +65,24 @@ router.get("/:id", authenticateToken, async (req, res) => {
 });
 // Create post
 router.post("/", authenticateToken, async (req, res) => {
-  const { project_id, social_network_id, publish_at, text_content, status } =
-    req.body;
+  const {
+    project_id,
+    social_network_id,
+    publish_at,
+    text_content,
+    status,
+    content_plan_id,
+  } = req.body;
   try {
     const result = await db.query(
-      "INSERT INTO posts (project_id, social_network_id, publish_at, text_content, status) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      "INSERT INTO posts (project_id, social_network_id, publish_at, text_content, status, content_plan_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
       [
         project_id,
         social_network_id,
         publish_at,
         text_content,
         status || "draft",
+        content_plan_id || null,
       ],
     );
     res.json(result.rows[0]);

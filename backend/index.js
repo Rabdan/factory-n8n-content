@@ -59,12 +59,16 @@ const postsRouter = require("./routes/posts");
 const authRouter = require("./routes/auth");
 const schedulerRouter = require("./routes/scheduler");
 const chatRouter = require("./routes/chat");
+const strategyLmRouter = require("./routes/strategylm");
+const aiRouter = require("./routes/ai");
 
 app.use("/api/auth", authRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/posts", postsRouter);
 app.use("/api/scheduler", schedulerRouter);
 app.use("/api/chat", chatRouter);
+app.use("/api/strategylm", strategyLmRouter);
+app.use("/api/ai", aiRouter);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -100,14 +104,16 @@ app.post(
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-    const { project_id } = req.body;
+    const { project_id, strategy_id, campaign_id } = req.body;
 
     try {
       const result = await pool.query(
         // Using direct pool here or import db
-        "INSERT INTO uploads (project_id, filename, filepath, file_type) VALUES ($1, $2, $3, $4) RETURNING *",
+        "INSERT INTO uploads (project_id, strategy_id, campaign_id, filename, filepath, file_type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
         [
           project_id || null,
+          strategy_id || null,
+          campaign_id || null,
           req.file.originalname,
           req.file.filename,
           req.file.mimetype,
@@ -122,23 +128,22 @@ app.post(
   },
 );
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  
+
   // Запуск планировщика публикаций
   postScheduler.start();
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully");
   postScheduler.stop();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
+process.on("SIGINT", () => {
+  console.log("SIGINT received, shutting down gracefully");
   postScheduler.stop();
   process.exit(0);
 });

@@ -52,6 +52,11 @@ CREATE TABLE IF NOT EXISTS social_networks (
 CREATE TABLE IF NOT EXISTS content_plans (
     id SERIAL PRIMARY KEY,
     project_id INTEGER REFERENCES projects(id),
+    campaign_id INTEGER,
+    title VARCHAR(255),
+    platform VARCHAR(100),
+    schedule_metadata JSONB DEFAULT '{}'::jsonb,
+    document_markdown TEXT,
     name VARCHAR(255),
     social_network_id INTEGER REFERENCES social_networks(id), -- Keeping for compatibility
     dates JSONB DEFAULT '[]'::jsonb, -- Array of dates ["2026-01-12", "2026-01-15"]
@@ -79,6 +84,46 @@ CREATE TABLE IF NOT EXISTS posts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- StrategyLM: top-level strategy docs
+CREATE TABLE IF NOT EXISTS strategies (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    brand_voice TEXT,
+    target_audience TEXT,
+    core_values TEXT,
+    document_markdown TEXT,
+    raw_data_json JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- StrategyLM: campaigns under strategies
+CREATE TABLE IF NOT EXISTS campaigns (
+    id SERIAL PRIMARY KEY,
+    strategy_id INTEGER REFERENCES strategies(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    goal TEXT,
+    main_message TEXT,
+    document_markdown TEXT,
+    start_date DATE,
+    end_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'fk_content_plans_campaign'
+    ) THEN
+        ALTER TABLE content_plans
+            ADD CONSTRAINT fk_content_plans_campaign
+            FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
 -- Create index for faster search of posts to publish
 CREATE INDEX IF NOT EXISTS idx_posts_publish_at_status
 ON posts (publish_at, status)
@@ -92,11 +137,43 @@ ON posts (project_id);
 CREATE TABLE IF NOT EXISTS uploads (
     id SERIAL PRIMARY KEY,
     project_id INTEGER REFERENCES projects(id),
+    strategy_id INTEGER REFERENCES strategies(id) ON DELETE SET NULL,
+    campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
     filename VARCHAR(255) NOT NULL,
     filepath VARCHAR(255) NOT NULL,
     file_type VARCHAR(50),
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- StrategyLM: external URLs for context/RAG per strategy/campaign
+CREATE TABLE IF NOT EXISTS knowledge_urls (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    strategy_id INTEGER REFERENCES strategies(id) ON DELETE SET NULL,
+    campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+    url TEXT NOT NULL,
+    title VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- StrategyLM chat history by document branch (strategy/campaign/plan)
+CREATE TABLE IF NOT EXISTS strategylm_chat_messages (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    branch_type VARCHAR(20) NOT NULL, -- strategy | campaign | plan
+    branch_id INTEGER NOT NULL,
+    role VARCHAR(20) NOT NULL, -- user | assistant
+    content TEXT NOT NULL,
+    changes_summary JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_strategies_project_id ON strategies(project_id);
+CREATE INDEX IF NOT EXISTS idx_campaigns_strategy_id ON campaigns(strategy_id);
+CREATE INDEX IF NOT EXISTS idx_content_plans_campaign_id ON content_plans(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_uploads_strategy_campaign ON uploads(strategy_id, campaign_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_urls_strategy_campaign ON knowledge_urls(strategy_id, campaign_id);
+CREATE INDEX IF NOT EXISTS idx_strategylm_chat_branch ON strategylm_chat_messages(project_id, branch_type, branch_id, created_at);
 
 -- Seed Data
 -- Seed Data
@@ -131,6 +208,54 @@ VALUES
 (2, 'Instagram', 'instagram-logo.png', '09:00:00'),
 (2, 'Twitter', 'twitter-logo.png', '12:00:00'),
 (2, 'Facebook', 'facebook-logo.png', '18:00:00');
+
+-- StrategyLM initial seed (English)
+INSERT INTO strategies (
+    project_id,
+    title,
+    brand_voice,
+    target_audience,
+    core_values,
+    raw_data_json
+)
+SELECT
+    1,
+    'NeuroVision Growth Strategy 2026',
+    'Confident, practical, and insight-driven',
+    'SMB founders and marketing managers in tech-enabled businesses',
+    'Clarity, measurable impact, and continuous experimentation',
+    '{"positioning":"AI-first content operations partner","priority_channels":["Instagram","Facebook"]}'::jsonb
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM strategies
+    WHERE project_id = 1
+      AND title = 'NeuroVision Growth Strategy 2026'
+);
+
+INSERT INTO campaigns (
+    strategy_id,
+    title,
+    goal,
+    main_message,
+    start_date,
+    end_date
+)
+SELECT
+    s.id,
+    'Spring Product Awareness Campaign',
+    'Increase qualified inbound leads by 30% in Q2',
+    'NeuroVision helps teams ship better content faster with reliable AI workflows',
+    '2026-03-15',
+    '2026-06-30'
+FROM strategies s
+WHERE s.project_id = 1
+  AND s.title = 'NeuroVision Growth Strategy 2026'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM campaigns c
+      WHERE c.strategy_id = s.id
+        AND c.title = 'Spring Product Awareness Campaign'
+  );
 
 -- Posts for January 2026
 INSERT INTO posts (project_id, social_network_id, publish_at, text_content, status)
