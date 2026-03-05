@@ -52,6 +52,16 @@
         activeNode ? `${activeNode.type}:${activeNode.id}` : "",
     );
 
+    function generateId(): string {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        return (
+            Math.random().toString(36).slice(2) +
+            Math.random().toString(36).slice(2)
+        );
+    }
+
     function completeStrategy(item: Strategy) {
         return !!(item.document_markdown && item.document_markdown.trim());
     }
@@ -230,7 +240,7 @@
             }
 
             return {
-                id: item.id || crypto.randomUUID(),
+                id: item.id || generateId(),
                 role: item.role,
                 content: item.content,
                 changes_summary: changes,
@@ -248,7 +258,7 @@
         if (!res.ok) {
             messages = [
                 {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     role: "assistant",
                     content:
                         "StrategyLM is ready. Select a Strategy, Campaign, or Plan and I will use that context.",
@@ -264,7 +274,7 @@
                 ? loaded
                 : [
                       {
-                          id: crypto.randomUUID(),
+                          id: generateId(),
                           role: "assistant",
                           content:
                               "StrategyLM is ready. Select a Strategy, Campaign, or Plan and I will use that context.",
@@ -609,7 +619,7 @@
             return;
 
         const userMsg: ChatMessage = {
-            id: crypto.randomUUID(),
+            id: generateId(),
             role: "user",
             content: chatInput,
         };
@@ -669,7 +679,7 @@
                 messages = toChatMessages(data.history || []);
             } else {
                 const aiMessage: ChatMessage = {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     role: "assistant",
                     content: data.error || "No response",
                     changes_summary: [],
@@ -680,7 +690,7 @@
             messages = [
                 ...messages,
                 {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     role: "assistant",
                     content: "Failed to contact AI endpoint.",
                     changes_summary: [],
